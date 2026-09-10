@@ -20,11 +20,11 @@ public class KpiPanel extends JPanel {
     private static final Color BORDER_COLOR =
             new Color(226, 232, 240);
 
-    private static final Color POSITIVE_COLOR =
-            new Color(22, 163, 74);
+//     private static final Color POSITIVE_COLOR =
+//             new Color(22, 163, 74);
 
-    private static final Color NEGATIVE_COLOR =
-            new Color(220, 38, 38);
+//     private static final Color NEGATIVE_COLOR =
+//             new Color(220, 38, 38);
 
     private final JLabel revenueValue =
             new JLabel("Loading...");
@@ -44,7 +44,7 @@ public class KpiPanel extends JPanel {
     private final JLabel retentionValue =
             new JLabel("Loading...");
 
-    private final JLabel marketingRoiValue =
+    private final JLabel costPerConversionValue =
             new JLabel("Loading...");
 
     private final JLabel revenueDelta =
@@ -65,7 +65,7 @@ public class KpiPanel extends JPanel {
     private final JLabel retentionDelta =
             new JLabel("--");
 
-    private final JLabel marketingDelta =
+    private final JLabel costPerConversionDelta =
             new JLabel("--");
 
     public KpiPanel() {
@@ -106,7 +106,7 @@ public class KpiPanel extends JPanel {
 
         add(
                 createCard(
-                        "Profit",
+                        "Profit (Net)",
                         profitValue,
                         profitDelta
                 )
@@ -114,7 +114,7 @@ public class KpiPanel extends JPanel {
 
         add(
                 createCard(
-                        "Profit Margin",
+                        "Gross Profit Margin",
                         marginValue,
                         marginDelta
                 )
@@ -138,9 +138,9 @@ public class KpiPanel extends JPanel {
 
         add(
                 createCard(
-                        "Marketing ROI",
-                        marketingRoiValue,
-                        marketingDelta
+                        "Cost per Conversion",
+                        costPerConversionValue,
+                        costPerConversionDelta
                 )
         );
 
@@ -270,290 +270,38 @@ public class KpiPanel extends JPanel {
      */
     public void update(Kpis kpis) {
         revenueValue.setText(String.format("$%,.2f", kpis.revenue()));
-        growthValue.setText(String.format("%.2f%%", kpis.growth()));
+        growthValue.setText(
+                kpis.growth() == null
+                        ? "N/A"
+                        : String.format("%.2f%%", kpis.growth()));
         profitValue.setText(String.format("$%,.2f", kpis.profit()));
         marginValue.setText(String.format("%.2f%%", kpis.margin()));
-        turnoverValue.setText(String.format("%.2f", kpis.turnover()));
+        turnoverValue.setText(String.format("%.3f", kpis.turnover()));
         retentionValue.setText(String.format("%.2f%%", kpis.retention()));
-        marketingRoiValue.setText(String.format("%.2f%%", kpis.marketingRoi()));
+        costPerConversionValue.setText(String.format("$%,.2f", kpis.costPerConversion()));
 
-        revenueDelta.setText("solo · sales");
-        growthDelta.setText("solo · sales");
-        profitDelta.setText("cross · sales + products");
-        marginDelta.setText("cross · sales + products");
-        turnoverDelta.setText("cross · inventory + products + sales");
-        retentionDelta.setText("cross · customers + sales");
-        marketingDelta.setText("cross · marketing + sales (month-level)");
+        revenueDelta.setText("Calculation: sales");
+        growthDelta.setText("Calculation: sales");
+        profitDelta.setText(
+                "<html><div style='width:160px'>Calculation: sales + products"
+                + (kpis.profitIncludesMarketing() ? " − marketing" : " (gross — marketing has no region)")
+                + "</div></html>"
+        );
+        marginDelta.setText("Calculation: sales + products");
+        turnoverDelta.setText(
+                "<html><div style='width:160px'>Calculation: inventory + products + sales"
+                + (kpis.turnoverRegionIgnored() ? " (national — inventory has no region)" : "")
+                + "</div></html>"
+        );
+        retentionDelta.setText("Calculation: customers + sales");
+        costPerConversionDelta.setText(
+                "<html><div style='width:160px'>Calculation: marketing </div></html>"
+        );
 
-        for (JLabel label : new JLabel[]{revenueDelta, growthDelta, profitDelta, marginDelta, turnoverDelta, retentionDelta, marketingDelta}) {
+        for (JLabel label : new JLabel[]{revenueDelta, growthDelta, profitDelta, marginDelta, turnoverDelta, retentionDelta, costPerConversionDelta}) {
             label.setForeground(SECONDARY_TEXT);
         }
     }
-
-    public void updateKpis(
-            double revenue,
-            double growth,
-            double profit,
-            double margin,
-            double turnover,
-            double retention,
-            double marketingRoi,
-            double revenueDeltaValue,
-            double growthDeltaValue,
-            double profitDeltaValue,
-            double marginDeltaValue,
-            double turnoverDeltaValue,
-            double retentionDeltaValue,
-            double marketingDeltaValue
-    ) {
-
-        revenueValue.setText(
-                String.format(
-                        "$%,.2f",
-                        revenue
-                )
-        );
-
-        growthValue.setText(
-                String.format(
-                        "%.2f%%",
-                        growth
-                )
-        );
-
-        profitValue.setText(
-                String.format(
-                        "$%,.2f",
-                        profit
-                )
-        );
-
-        marginValue.setText(
-                String.format(
-                        "%.2f%%",
-                        margin
-                )
-        );
-
-        turnoverValue.setText(
-                String.format(
-                        "%.2f",
-                        turnover
-                )
-        );
-
-        retentionValue.setText(
-                String.format(
-                        "%.2f%%",
-                        retention
-                )
-        );
-
-        marketingRoiValue.setText(
-                String.format(
-                        "%.2f%%",
-                        marketingRoi
-                )
-        );
-
-        setDelta(
-                revenueDelta,
-                revenueDeltaValue
-        );
-
-        setDelta(
-                growthDelta,
-                growthDeltaValue
-        );
-
-        setDelta(
-                profitDelta,
-                profitDeltaValue
-        );
-
-        setDelta(
-                marginDelta,
-                marginDeltaValue
-        );
-
-        setDelta(
-                turnoverDelta,
-                turnoverDeltaValue
-        );
-
-        setDelta(
-                retentionDelta,
-                retentionDeltaValue
-        );
-
-        setDelta(
-                marketingDelta,
-                marketingDeltaValue
-        );
-    }
-
-    private void setDelta(
-            JLabel label,
-            double value
-    ) {
-
-        if (value > 0) {
-
-            label.setText(
-                    String.format(
-                            "▲ %.2f%% vs prior period",
-                            value
-                    )
-            );
-
-            label.setForeground(
-                    POSITIVE_COLOR
-            );
-
-        } else if (value < 0) {
-
-            label.setText(
-                    String.format(
-                            "▼ %.2f%% vs prior period",
-                            Math.abs(value)
-                    )
-            );
-
-            label.setForeground(
-                    NEGATIVE_COLOR
-            );
-
-        } else {
-
-            label.setText(
-                    "No change vs prior period"
-            );
-
-            label.setForeground(
-                    SECONDARY_TEXT
-            );
-        }
-    }
-
-    public void showUnavailableCrossKpis() {
-
-        profitValue.setText(
-                "Backend pending"
-        );
-
-        marginValue.setText(
-                "Backend pending"
-        );
-
-        turnoverValue.setText(
-                "Backend pending"
-        );
-
-        retentionValue.setText(
-                "Backend pending"
-        );
-
-        marketingRoiValue.setText(
-                "Backend pending"
-        );
-
-        profitDelta.setText("--");
-        marginDelta.setText("--");
-        turnoverDelta.setText("--");
-        retentionDelta.setText("--");
-        marketingDelta.setText("--");
-    }
-
-    public void updateSoloKpis(
-        double revenue,
-        double growth
-) {
-
-    revenueValue.setText(
-            String.format(
-                    "$%,.2f",
-                    revenue
-            )
-    );
-
-    growthValue.setText(
-            String.format(
-                    "%.2f%%",
-                    growth
-            )
-    );
-
-    if (growth > 0) {
-
-        revenueDelta.setText(
-                String.format(
-                        "▲ %.2f%% vs prior period",
-                        growth
-                )
-        );
-
-        growthDelta.setText(
-                String.format(
-                        "▲ %.2f%% vs prior period",
-                        growth
-                )
-        );
-
-        revenueDelta.setForeground(
-                POSITIVE_COLOR
-        );
-
-        growthDelta.setForeground(
-                POSITIVE_COLOR
-        );
-
-    } else if (growth < 0) {
-
-        revenueDelta.setText(
-                String.format(
-                        "▼ %.2f%% vs prior period",
-                        Math.abs(growth)
-                )
-        );
-
-        growthDelta.setText(
-                String.format(
-                        "▼ %.2f%% vs prior period",
-                        Math.abs(growth)
-                )
-        );
-
-        revenueDelta.setForeground(
-                NEGATIVE_COLOR
-        );
-
-        growthDelta.setForeground(
-                NEGATIVE_COLOR
-        );
-
-    } else {
-
-        revenueDelta.setText(
-                "No change vs prior period"
-        );
-
-        growthDelta.setText(
-                "No change vs prior period"
-        );
-
-        revenueDelta.setForeground(
-                SECONDARY_TEXT
-        );
-
-        growthDelta.setForeground(
-                SECONDARY_TEXT
-        );
-    }
-
-    revalidate();
-    repaint();
-}
-
 
     public void showError() {
 
@@ -563,6 +311,6 @@ public class KpiPanel extends JPanel {
         marginValue.setText("Unavailable");
         turnoverValue.setText("Unavailable");
         retentionValue.setText("Unavailable");
-        marketingRoiValue.setText("Unavailable");
+        costPerConversionValue.setText("Unavailable");
     }
 }

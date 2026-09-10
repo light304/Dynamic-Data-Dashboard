@@ -3,6 +3,8 @@ package dashboard.gui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 public abstract class BaseAnalyticsPage extends JPanel implements FilterableDashboardPage {
 
@@ -80,4 +82,29 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
     }
 
     protected abstract void refreshData();
+
+    protected final void loadAsync(Callable<List<JPanel>> loader) {
+        startRefresh();
+        charts.add(AnalyticsCharts.messageCard("Loading", "Fetching data..."));
+        charts.revalidate();
+        charts.repaint();
+
+        new SwingWorker<List<JPanel>, Void>() {
+            @Override
+            protected List<JPanel> doInBackground() throws Exception {
+                return loader.call();
+            }
+
+            @Override
+            protected void done() {
+                charts.removeAll();
+                try {
+                    for (JPanel card : get()) charts.add(card);
+                } catch (Exception ex) {
+                    showError(ex);
+                }
+                finishRefresh();
+            }
+        }.execute();
+    }
 }

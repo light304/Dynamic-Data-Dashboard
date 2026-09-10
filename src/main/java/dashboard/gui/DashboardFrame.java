@@ -1,5 +1,6 @@
 package dashboard.gui;
 
+import dashboard.database.AnalyticsApi;
 import dashboard.database.SchemaIntrospector;
 import dashboard.database.SchemaIntrospector.TableMeta;
 
@@ -38,7 +39,18 @@ public class DashboardFrame extends JFrame {
             schema = SchemaIntrospector.introspect();
             System.out.println("Schema loaded successfully.");
         } catch (Exception ex) {
-            System.err.println("Schema introspection failed: " + ex.getMessage());
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Cannot reach the backend service at http://localhost:3000\n\n"
+                    + "Start it first, in a separate terminal:\n\n"
+                    + "    cd src\\main\\java\\dashboard\\database\n"
+                    + "    npm start\n\n"
+                    + "Then run this application again.\n\n"
+                    + "Details: " + ex,
+                    "Backend Not Running",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            System.exit(1);
         }
 
         setTitle("Dynamic Retail Dashboard");
@@ -56,7 +68,7 @@ public class DashboardFrame extends JFrame {
         // ORIGINAL STRUCTURE: the top strip spans the whole window and contains
         // the dark dashboard branding directly above the sidebar.
         root.add(createTopPanel(), BorderLayout.NORTH);
-        root.add(new SidebarPanel(this::showPage), BorderLayout.WEST);
+        root.add(new SidebarPanel(this::showPage, this::uploadCsv), BorderLayout.WEST);
 
         // The filter is only above the changing page content, not above the sidebar.
         JPanel centre = new JPanel(new BorderLayout());
@@ -110,6 +122,7 @@ public class DashboardFrame extends JFrame {
         ProductsPanel products = new ProductsPanel();
         MarketingPanel marketing = new MarketingPanel();
         CustomersPanel customers = new CustomersPanel();
+        ReportsPanel reports = new ReportsPanel();
 
         filterablePages.put("Overview", overview);
         filterablePages.put("Sales", sales);
@@ -117,6 +130,7 @@ public class DashboardFrame extends JFrame {
         filterablePages.put("Products", products);
         filterablePages.put("Marketing", marketing);
         filterablePages.put("Customers", customers);
+        filterablePages.put("Reports", reports);
 
         content.add(overview, "Overview");
         content.add(sales, "Sales");
@@ -124,7 +138,7 @@ public class DashboardFrame extends JFrame {
         content.add(products, "Products");
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
-        content.add(placeholder("Reports", "Report generation remains on the project roadmap."), "Reports");
+        content.add(reports, "Reports");
         content.add(placeholder("Alerts", "The low-stock backend route can be connected here."), "Alerts");
 
         // PERFORMANCE: load only the visible page at startup. Previously all six
@@ -170,4 +184,84 @@ public class DashboardFrame extends JFrame {
         panel.add(new JLabel("<html><h1>" + title + "</h1><p>" + message + "</p></html>"), BorderLayout.NORTH);
         return panel;
     }
+
+    private void uploadCsv() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select a CSV file");
+        chooser.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter("CSV files", "csv"));
+
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        java.io.File file = chooser.getSelectedFile();
+        JDialog loading = new JDialog(this, "Uploading", true);
+        JPanel body = new JPanel(new BorderLayout(0, 10));
+        body.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        body.add(new JLabel("Loading " + file.getName() + "..."), BorderLayout.NORTH);
+
+        JProgressBar bar = new JProgressBar();
+        bar.setIndeterminate(true);
+        body.add(bar, BorderLayout.CENTER);
+
+        loading.setContentPane(body);
+        loading.pack();
+        loading.setLocationRelativeTo(this);
+        loading.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+
+        new SwingWorker<AnalyticsApi.UploadResult, Void>() {
+            @Override
+            protected AnalyticsApi.UploadResult doInBackground() throws Exception {
+                return AnalyticsApi.upload(file.getAbsolutePath());
+            }
+
+            @Override
+            protected void done() {
+                loading.dispose();
+                setCursor(Cursor.getDefaultCursor());
+                try {
+                    AnalyticsApi.UploadResult result = get();
+
+                    if (result.success()) {
+                        String message =
+                            "Loaded " + result.loaded() + " of " + result.totalRows()
+                            + " rows into " + result.table() + ".\n"
+                            + result.rejected() + " row(s) rejected.";
+
+                        if (!result.rejectedDetail().isEmpty()) {
+                            message += "\n\n" + String.join("\n", result.rejectedDetail());
+                            if (result.rejected() > result.rejectedDetail().size()) {
+                                message += "\n... and "
+                                        + (result.rejected() - result.rejectedDetail().size())
+                                        + " more";
+                            }
+                        }
+
+                        JOptionPane.showMessageDialog(
+                                DashboardFrame.this, message,
+                                "Upload Complete", JOptionPane.INFORMATION_MESSAGE
+                            );
+
+                        filterablePages.keySet()
+                                .forEach(DashboardFrame.this::applyFilterToPage);
+                    } else {
+                        JOptionPane.showMessageDialog(
+                                DashboardFrame.this,
+                                result.error(),
+                                "Upload Failed",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(
+                            DashboardFrame.this,
+                            "Upload failed: " + ex,
+                            "Upload Failed",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+
+        loading.setVisible(true);
+    }
+
 }

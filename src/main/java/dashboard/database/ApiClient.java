@@ -7,11 +7,14 @@ import java.net.http.HttpResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.time.Duration;
 
 public class ApiClient {
 
     private static final String BASE_URL = "http://localhost:3000";
-    private static final HttpClient client = HttpClient.newHttpClient();
+        private static final HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(3))
+            .build();
 
     public static String getData(String endpoint, Map<String, String> params) throws Exception {
         StringBuilder url = new StringBuilder(BASE_URL + "/" + endpoint);
@@ -30,6 +33,7 @@ public class ApiClient {
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url.toString()))
+                .timeout(Duration.ofSeconds(10))
                 .GET()
                 .build();
 
@@ -38,6 +42,20 @@ public class ApiClient {
         if (response.statusCode() != 200) {
             throw new RuntimeException("Server returned status " + response.statusCode() + ": " + response.body());
         }
+
+        return response.body();
+    }
+
+    public static String postJson(String endpoint, String jsonBody) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/" + endpoint))
+                .timeout(Duration.ofMinutes(5))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString());
 
         return response.body();
     }

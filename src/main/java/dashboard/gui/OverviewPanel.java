@@ -56,16 +56,26 @@ public class OverviewPanel extends JPanel implements FilterableDashboardPage {
     }
 
     /** Refreshes both the KPI cards and overview revenue chart from one filter. */
-    @Override
+        @Override
     public void applyFilter(DashboardFilter filter) {
         currentFilter = filter == null ? DashboardFilter.defaults() : filter;
 
-        try {
-            kpiPanel.update(AnalyticsApi.overview(currentFilter.toParams()));
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            kpiPanel.showError();
-        }
+        new SwingWorker<AnalyticsApi.Kpis, Void>() {
+            @Override
+            protected AnalyticsApi.Kpis doInBackground() throws Exception {
+                return AnalyticsApi.overview(currentFilter.toParams());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    kpiPanel.update(get());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    kpiPanel.showError();
+                }
+            }
+        }.execute();
 
         revenueChartPanel.applyFilters(
                 currentFilter.year(),
