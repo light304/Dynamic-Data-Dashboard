@@ -3459,3 +3459,17 @@ app.listen(
     );
   }
 );
+
+// For test purposes only - is safe to be deleted or commented out.
+// Nothing above this line was changed - this block only reaches into the existing module scope to expose the pure 
+// helper functions so an external test file can call the real functions directly, instead of re-implementing/copying 
+// their logic into the test.
+
+module.exports.testHelpers = {
+  pad2,
+  isoDate,
+  daysInMonth,
+  dashboardRange,
+  previousRange,
+  regionClause
+};

@@ -1,8 +1,23 @@
 package dashboard.gui;
 
-import dashboard.database.ApiClient;
-import dashboard.database.SchemaIntrospector;
-import dashboard.database.SchemaIntrospector.ComparisonRow;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -11,17 +26,9 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import dashboard.database.ApiClient;
+import dashboard.database.SchemaIntrospector;
+import dashboard.database.SchemaIntrospector.ComparisonRow;
 
 /*
  * This class creates the Revenue Trend graph.
@@ -314,16 +321,10 @@ public class RevenueChartPanel extends JPanel {
      * Reloads real revenue information from the backend.
      */
     public void refreshChart() {
-
-        if (revenueDataset == null) {
-            return;
-        }
-
+        
+        if (revenueDataset == null) return;
         try {
-
-            statusLabel.setText(
-                    "Loading revenue data..."
-            );
+            statusLabel.setText("Loading revenue data...");
 
             /*
              * Ask the real backend to calculate:
@@ -347,14 +348,8 @@ public class RevenueChartPanel extends JPanel {
                                     "SUM"
                             )
                     );
-
-            System.out.println(
-                    "Revenue API response:"
-            );
-
-            System.out.println(
-                    json
-            );
+            System.out.println("Revenue API response:");
+            System.out.println(json.replace("{\"label\"", "\n  {\"label\""));
 
             /*
              * SchemaIntrospector already knows how to parse
