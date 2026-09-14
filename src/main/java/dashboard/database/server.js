@@ -60,7 +60,7 @@ const DATASETS = {
       channel: 'channel',
       cost: 'cost',
       conversions: 'conversions',
-      date: 'campaign_date'          // rename
+      date: 'campaign_date'
     },
     numeric: ['campaign_id', 'cost', 'conversions'],
     required: ['campaign_id'],
@@ -76,12 +76,18 @@ const DATASETS = {
       product_id: 'product_id',
       stock_level: 'stock_level',
       warehouse: 'warehouse',
-      date: 'snapshot_date'          // rename
+      date: 'snapshot_date'
     },
     numeric: ['inventory_id', 'product_id', 'stock_level'],
     required: ['inventory_id', 'product_id'],
     dates: ['date'],
-    parents: [{ column: 'product_id', table: 'products', key: 'product_id' }]
+    parents: [
+      {
+        column: 'product_id',
+        table: 'products',
+        key: 'product_id'
+      }
+    ]
   },
 
   sales: {
@@ -97,12 +103,31 @@ const DATASETS = {
       price: 'price',
       revenue: 'revenue'
     },
-    numeric: ['order_id', 'customer_id', 'product_id', 'quantity', 'price', 'revenue'],
-    required: ['order_id', 'customer_id', 'product_id'],
+    numeric: [
+      'order_id',
+      'customer_id',
+      'product_id',
+      'quantity',
+      'price',
+      'revenue'
+    ],
+    required: [
+      'order_id',
+      'customer_id',
+      'product_id'
+    ],
     dates: ['order_date'],
     parents: [
-      { column: 'customer_id', table: 'customers', key: 'customer_id' },
-      { column: 'product_id',  table: 'products',  key: 'product_id' }
+      {
+        column: 'customer_id',
+        table: 'customers',
+        key: 'customer_id'
+      },
+      {
+        column: 'product_id',
+        table: 'products',
+        key: 'product_id'
+      }
     ]
   }
 };
@@ -308,8 +333,6 @@ app.get('/api/query/compare', (req, res) => {
     });
   }
 });
-
-
 // ============================================================
 // DIRECT TWO-TABLE JOIN COMPARISON
 // ============================================================
@@ -990,28 +1013,34 @@ app.get(
             .get(
               ...profitParams
             );
-        
+
+
         // -----------------------------
-        // MARKETING COST (for net profit)
-        // marketing has no region column, so it is only
-        // deducted on whole-business views
+        // MARKETING COST
         // -----------------------------
+
         const marketingCostRow =
           db.prepare(`
             SELECT COALESCE(SUM(cost), 0) AS cost
             FROM marketing
             WHERE campaign_date BETWEEN ? AND ?
-          `).get(range.start, range.end);
+          `).get(
+            range.start,
+            range.end
+          );
 
-        const isWholeBusiness = (region === 'All Regions');
+        const isWholeBusiness =
+          region === 'All Regions';
 
-        const netProfit = isWholeBusiness
-          ? profitRow.profit - marketingCostRow.cost
-          : profitRow.profit;
+        const netProfit =
+          isWholeBusiness
+            ? profitRow.profit
+              - marketingCostRow.cost
+            : profitRow.profit;
+
 
         // -----------------------------
         // INVENTORY TURNOVER
-        // sales + products + inventory
         // -----------------------------
 
         const cogsParams = [
@@ -1019,7 +1048,6 @@ app.get(
           range.end
         ];
 
-        // No region filter for COGS because inventory has no region column, so turnover is always whole-business
         const cogsRegion = '';
 
         const cogs =
@@ -1061,20 +1089,28 @@ app.get(
                 ),
                 0
               ) AS value
+
             FROM (
+
               SELECT
                 i.product_id,
+
                 AVG(
                   i.stock_level
                 ) AS avg_stock,
+
                 p.cost
+
               FROM inventory i
+
               JOIN products p
                 ON p.product_id
                 = i.product_id
+
               WHERE
                 i.snapshot_date
                 BETWEEN ? AND ?
+
               GROUP BY
                 i.product_id,
                 p.cost
@@ -1096,10 +1132,9 @@ app.get(
 
         // -----------------------------
         // CUSTOMER RETENTION
-        // sales + customers
         // -----------------------------
 
-         const existingBase =
+        const existingBase =
           db.prepare(`
             SELECT
               COUNT(*) AS value
@@ -1121,7 +1156,6 @@ app.get(
           range.end
         ];
 
-        // Customers has no region, so retention is always whole-business
         const retainedRegion = '';
 
         const retained =
@@ -1159,12 +1193,8 @@ app.get(
               / existingBase;
 
 
-                // -----------------------------
+        // -----------------------------
         // COST PER CONVERSION
-        //
-        // Replaces Marketing ROI. sales and marketing share no key,
-        // so revenue cannot be attributed to campaigns. Marketing has
-        // no region either, so this is whole-business only.
         // -----------------------------
 
         const conversions =
@@ -1223,7 +1253,7 @@ app.get(
                   2
                 )
               ),
-            
+
             profit_includes_marketing:
               isWholeBusiness,
 
@@ -1262,8 +1292,6 @@ app.get(
       }
     )
 );
-
-
 // ============================================================
 // SALES
 // ============================================================
@@ -1728,7 +1756,8 @@ app.get(
           range.end
         ];
 
-        // No region filter for COGS because inventory has no region column, so turnover is always whole-business
+        // No region filter for COGS because inventory has no region column,
+        // so turnover is always whole-business
         let regionSql = '';
 
         params.push(
@@ -2075,6 +2104,7 @@ app.get(
     )
 );
 
+
 // CROSS KPI:
 // Stock cover in weeks
 // inventory + sales + products
@@ -2127,7 +2157,7 @@ app.get(
 
         const rows =
           db.prepare(`
-                        WITH stock AS (
+            WITH stock AS (
 
               SELECT
 
@@ -2225,8 +2255,6 @@ app.get(
       }
     )
 );
-
-
 // ============================================================
 // PRODUCTS
 // ============================================================
@@ -2903,8 +2931,6 @@ app.get(
       }
     )
 );
-
-
 // ============================================================
 // CUSTOMERS
 // ============================================================
@@ -3132,6 +3158,7 @@ app.get(
                   = m.month
 
                   AND
+
                   previous.month
                   =
                   strftime(
@@ -3266,7 +3293,19 @@ app.get(
 
 
 // ============================================================
-// EXPERIMENTAL SALES DRILL-DOWN
+// SALES DRILL-DOWN
+// ============================================================
+//
+// Opens the detailed sales records behind a chart.
+//
+// Supports:
+// - month
+// - week
+// - category
+// - region
+//
+// Example:
+// /api/drilldown/sales?month=2023-01&week=Week%202
 // ============================================================
 
 app.get(
@@ -3279,6 +3318,11 @@ app.get(
         const month =
           String(
             req.query.month || ''
+          ).trim();
+
+        const week =
+          String(
+            req.query.week || ''
           ).trim();
 
         const category =
@@ -3301,6 +3345,8 @@ app.get(
         const params = [];
 
 
+        // MONTH
+
         if (month) {
 
           where.push(
@@ -3313,6 +3359,74 @@ app.get(
         }
 
 
+        // WEEK
+        //
+        // Week 1 = days 1-7
+        // Week 2 = days 8-14
+        // Week 3 = days 15-21
+        // Week 4 = days 22-28
+        // Week 5 = days 29-31
+
+        if (week) {
+
+          let startDay = null;
+          let endDay = null;
+
+          switch (week) {
+
+            case 'Week 1':
+              startDay = 1;
+              endDay = 7;
+              break;
+
+            case 'Week 2':
+              startDay = 8;
+              endDay = 14;
+              break;
+
+            case 'Week 3':
+              startDay = 15;
+              endDay = 21;
+              break;
+
+            case 'Week 4':
+              startDay = 22;
+              endDay = 28;
+              break;
+
+            case 'Week 5':
+              startDay = 29;
+              endDay = 31;
+              break;
+          }
+
+
+          if (
+            startDay !== null
+            && endDay !== null
+          ) {
+
+            where.push(`
+              CAST(
+                strftime(
+                  '%d',
+                  s.order_date
+                )
+                AS INTEGER
+              )
+              BETWEEN ? AND ?
+            `);
+
+            params.push(
+              startDay,
+              endDay
+            );
+          }
+        }
+
+
+        // CATEGORY
+
         if (category) {
 
           where.push(
@@ -3324,6 +3438,8 @@ app.get(
           );
         }
 
+
+        // REGION
 
         if (
           region
@@ -3339,6 +3455,8 @@ app.get(
           );
         }
 
+
+        // QUERY
 
         const sql = `
           SELECT
@@ -3383,8 +3501,11 @@ app.get(
           );
 
 
-        res.json({
+        // Keep the original response structure because
+        // AnalyticsApi.drilldownSales() expects columns
+        // at the top level and rows inside "data".
 
+        res.json({
           success: true,
 
           columns: [
@@ -3398,14 +3519,11 @@ app.get(
             'revenue'
           ],
 
-          data:
-            rows
+          data: rows
         });
       }
     )
 );
-
-
 // ============================================================
 // EXISTING LOW STOCK ALERT
 // ============================================================
@@ -3436,193 +3554,533 @@ app.get(
   }
 );
 
+
 // ============================================================
 // CSV UPLOAD
 // ============================================================
 
 function uploadError(res, problem, fix) {
+
   return res.status(400).json({
     success: false,
     error: problem + (fix ? '\n\n' + fix : '')
   });
 }
 
+
 app.post(
   '/api/upload',
   (req, res) =>
-    safeRoute(res, () => {
+    safeRoute(
+      res,
+      () => {
 
-      const filePath = String(req.body.path || '').trim();
+        const filePath =
+          String(
+            req.body.path || ''
+          ).trim();
 
-      if (!filePath || !fs.existsSync(filePath)) {
-        return uploadError(res, 'File not found: ' + filePath);
-      }
 
-      // Dataset identified by filename
-      const fileName = path.basename(filePath).toLowerCase();
-      const key = Object.keys(DATASETS)
-        .find(k => fileName === k + '.csv');
+        if (
+          !filePath
+          || !fs.existsSync(
+            filePath
+          )
+        ) {
 
-      if (!key) {
-        return uploadError(res,
-          '"' + fileName + '" is not a recognised data file.\n',
-          'Ensure it fits the type (and naming) of one of: '
-          + Object.keys(DATASETS).map(k => k + '.csv').join(', '));
-      }
+          return uploadError(
+            res,
+            'File not found: ' + filePath
+          );
+        }
 
-      const spec = DATASETS[key];
 
-      // Parse
-      let rows;
-      try {
-        rows = parse(fs.readFileSync(filePath, 'utf8'), {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          bom: true
-        });
-            } catch (err) {
-        return uploadError(res,
-          'Could not read ' + path.basename(filePath) + ': ' + err.message,
-          '\nEvery row must have the same number of commas as the header row. '
-          + '\nIf a value contains a comma, wrap it in double quotes, like "Home, Garden"');
-      }
+        // Dataset identified by filename
 
-      if (rows.length === 0) {
-        return uploadError(res,
-          'File is empty (contains no data rows).');
-      }
+        const fileName =
+          path.basename(
+            filePath
+          ).toLowerCase();
 
-      // Header check
-      const expected = Object.keys(spec.columns);
-      const actual = Object.keys(rows[0]);
-      const missing = expected.filter(c => !actual.includes(c));
+        const key =
+          Object.keys(
+            DATASETS
+          )
+            .find(
+              k =>
+                fileName
+                === k + '.csv'
+            );
 
-      if (missing.length > 0) {
-        return uploadError(res,
-          'Missing column(s): ' + missing.join(', '),
-          '\nExpected header: ' + expected.join(', '));
-      }
 
-      // Statement for upserting into this table
-      const dbCols = expected.map(c => spec.columns[c]);
-      const updates = dbCols
-        .filter(c => c !== spec.pk)
-        .map(c => `"${c}" = excluded."${c}"`)
-        .join(', ');
+        if (!key) {
 
-      const insert = db.prepare(`
-        INSERT INTO "${spec.table}" (${dbCols.map(c => `"${c}"`).join(', ')})
-        VALUES (${dbCols.map(() => '?').join(', ')})
-        ON CONFLICT("${spec.pk}") DO UPDATE SET ${updates}
-      `);
+          return uploadError(
+            res,
 
-      // Parent lookups for foreign key checks
-      const parentChecks = spec.parents.map(p => ({
-        column: p.column,
-        table: p.table,
-        stmt: db.prepare(`SELECT 1 AS ok FROM "${p.table}" WHERE "${p.key}" = ?`)
-      }));
+            '"' + fileName
+            + '" is not a recognised data file.\n',
 
-      const rejected = [];
-      let inserted = 0;
+            'Ensure it fits the type (and naming) of one of: '
+            + Object.keys(
+                DATASETS
+              )
+                .map(
+                  k =>
+                    k + '.csv'
+                )
+                .join(', ')
+          );
+        }
 
-      const loadAll = db.transaction(() => {
 
-        rows.forEach((row, index) => {
+        const spec =
+          DATASETS[key];
 
-          const lineNumber = index + 2;   // +1 for header, +1 for 1-based
 
-          // empty row
-          if (expected.every(c => String(row[c] ?? '').trim() === '')) {
-            rejected.push({ line: lineNumber, reason: 'Row is empty' });
-            return;
-          }
+        // Parse
 
-          // required fields
-          const blank = spec.required
-            .find(c => String(row[c] ?? '').trim() === '');
+        let rows;
 
-          if (blank) {
-            rejected.push({ line: lineNumber, reason: 'Missing required field: ' + blank });
-            return;
-          }
+        try {
 
-          // numeric fields must parse
-          const values = [];
-          let badNumber = null;
-
-          for (const csvCol of expected) {
-            const raw = row[csvCol];
-
-            if (spec.numeric.includes(csvCol)) {
-              const n = Number(raw);
-              if (raw === '' || raw === null || Number.isNaN(n)) {
-                badNumber = csvCol;
-                break;
+          rows =
+            parse(
+              fs.readFileSync(
+                filePath,
+                'utf8'
+              ),
+              {
+                columns: true,
+                skip_empty_lines: true,
+                trim: true,
+                bom: true
               }
-              values.push(n);
-            } else {
-              values.push(raw === '' ? null : raw);
+            );
+
+        } catch (err) {
+
+          return uploadError(
+            res,
+
+            'Could not read '
+            + path.basename(
+                filePath
+              )
+            + ': '
+            + err.message,
+
+            '\nEvery row must have the same number of commas as the header row. '
+            + '\nIf a value contains a comma, wrap it in double quotes, like "Home, Garden"'
+          );
+        }
+
+
+        if (
+          rows.length === 0
+        ) {
+
+          return uploadError(
+            res,
+            'File is empty (contains no data rows).'
+          );
+        }
+
+
+        // Header check
+
+        const expected =
+          Object.keys(
+            spec.columns
+          );
+
+        const actual =
+          Object.keys(
+            rows[0]
+          );
+
+        const missing =
+          expected.filter(
+            c =>
+              !actual.includes(
+                c
+              )
+          );
+
+
+        if (
+          missing.length > 0
+        ) {
+
+          return uploadError(
+            res,
+
+            'Missing column(s): '
+            + missing.join(
+                ', '
+              ),
+
+            '\nExpected header: '
+            + expected.join(
+                ', '
+              )
+          );
+        }
+
+
+        // Statement for upserting into this table
+
+        const dbCols =
+          expected.map(
+            c =>
+              spec.columns[c]
+          );
+
+        const updates =
+          dbCols
+            .filter(
+              c =>
+                c !== spec.pk
+            )
+            .map(
+              c =>
+                `"${c}" = excluded."${c}"`
+            )
+            .join(', ');
+
+
+        const insert =
+          db.prepare(`
+            INSERT INTO "${spec.table}"
+            (
+              ${dbCols
+                .map(
+                  c =>
+                    `"${c}"`
+                )
+                .join(', ')
+              }
+            )
+
+            VALUES
+            (
+              ${dbCols
+                .map(
+                  () => '?'
+                )
+                .join(', ')
+              }
+            )
+
+            ON CONFLICT("${spec.pk}")
+            DO UPDATE SET
+              ${updates}
+          `);
+
+
+        // Parent lookups for foreign key checks
+
+        const parentChecks =
+          spec.parents.map(
+            p => ({
+
+              column:
+                p.column,
+
+              table:
+                p.table,
+
+              stmt:
+                db.prepare(
+                  `SELECT 1 AS ok
+                   FROM "${p.table}"
+                   WHERE "${p.key}" = ?`
+                )
+            })
+          );
+
+
+        const rejected = [];
+        let inserted = 0;
+
+
+        const loadAll =
+          db.transaction(
+            () => {
+
+              rows.forEach(
+                (row, index) => {
+
+                  // +1 for header
+                  // +1 for 1-based line numbers
+
+                  const lineNumber =
+                    index + 2;
+
+
+                  // Empty row
+
+                  if (
+                    expected.every(
+                      c =>
+                        String(
+                          row[c] ?? ''
+                        ).trim() === ''
+                    )
+                  ) {
+
+                    rejected.push({
+                      line: lineNumber,
+                      reason: 'Row is empty'
+                    });
+
+                    return;
+                  }
+
+
+                  // Required fields
+
+                  const blank =
+                    spec.required
+                      .find(
+                        c =>
+                          String(
+                            row[c] ?? ''
+                          ).trim() === ''
+                      );
+
+
+                  if (blank) {
+
+                    rejected.push({
+                      line: lineNumber,
+                      reason:
+                        'Missing required field: '
+                        + blank
+                    });
+
+                    return;
+                  }
+
+
+                  // Numeric fields must parse
+
+                  const values = [];
+                  let badNumber = null;
+
+
+                  for (
+                    const csvCol
+                    of expected
+                  ) {
+
+                    const raw =
+                      row[csvCol];
+
+
+                    if (
+                      spec.numeric.includes(
+                        csvCol
+                      )
+                    ) {
+
+                      const n =
+                        Number(
+                          raw
+                        );
+
+
+                      if (
+                        raw === ''
+                        || raw === null
+                        || Number.isNaN(
+                          n
+                        )
+                      ) {
+
+                        badNumber =
+                          csvCol;
+
+                        break;
+                      }
+
+
+                      values.push(
+                        n
+                      );
+
+                    } else {
+
+                      values.push(
+                        raw === ''
+                          ? null
+                          : raw
+                      );
+                    }
+                  }
+
+
+                  if (badNumber) {
+
+                    rejected.push({
+                      line: lineNumber,
+                      reason:
+                        'Not a number: '
+                        + badNumber
+                    });
+
+                    return;
+                  }
+
+
+                  // Date fields must look like YYYY-MM-DD
+
+                  const badDate =
+                    (
+                      spec.dates || []
+                    )
+                      .find(
+                        c =>
+                          !/^\d{4}-\d{2}-\d{2}$/
+                            .test(
+                              String(
+                                row[c] ?? ''
+                              ).trim()
+                            )
+                      );
+
+
+                  if (badDate) {
+
+                    rejected.push({
+                      line: lineNumber,
+
+                      reason:
+                        'Date must be YYYY-MM-DD: '
+                        + badDate
+                    });
+
+                    return;
+                  }
+
+
+                  // Foreign keys must exist
+
+                  let missingParent =
+                    null;
+
+
+                  for (
+                    const check
+                    of parentChecks
+                  ) {
+
+                    const value =
+                      Number(
+                        row[
+                          check.column
+                        ]
+                      );
+
+
+                    if (
+                      !check.stmt.get(
+                        value
+                      )
+                    ) {
+
+                      missingParent =
+                        `${check.column} ${value} not found in ${check.table}`;
+
+                      break;
+                    }
+                  }
+
+
+                  if (
+                    missingParent
+                  ) {
+
+                    rejected.push({
+                      line: lineNumber,
+                      reason: missingParent
+                    });
+
+                    return;
+                  }
+
+
+                  insert.run(
+                    ...values
+                  );
+
+                  inserted++;
+                }
+              );
             }
-          }
+          );
 
-          if (badNumber) {
-            rejected.push({ line: lineNumber, reason: 'Not a number: ' + badNumber });
-            return;
-          }
 
-          // Date Fields must look like YYYY-MM-DD
-          const badDate = (spec.dates || [])
-            .find(c => !/^\d{4}-\d{2}-\d{2}$/.test(String(row[c] ?? '').trim()));
+        loadAll();
 
-          if (badDate) {
-            rejected.push({
-              line: lineNumber,
-              reason: 'Date must be YYYY-MM-DD: ' + badDate
-            });
-            return;
-          }
 
-          // foreign keys must exist
-          let missingParent = null;
+        if (
+          rejected.length > 0
+        ) {
 
-          for (const check of parentChecks) {
-            const value = Number(row[check.column]);
-            if (!check.stmt.get(value)) {
-              missingParent = `${check.column} ${value} not found in ${check.table}`;
-              break;
-            }
-          }
+          console.log(
+            'Rejected rows in '
+            + fileName
+            + ':'
+          );
 
-          if (missingParent) {
-            rejected.push({ line: lineNumber, reason: missingParent });
-            return;
-          }
+          rejected
+            .slice(
+              0,
+              20
+            )
+            .forEach(
+              r =>
+                console.log(
+                  '  line '
+                  + r.line
+                  + ': '
+                  + r.reason
+                )
+            );
+        }
 
-          insert.run(...values);
-          inserted++;
+
+        res.json({
+
+          success: true,
+
+          dataset:
+            key,
+
+          table:
+            spec.table,
+
+          total_rows:
+            rows.length,
+
+          loaded:
+            inserted,
+
+          rejected:
+            rejected.length,
+
+          // Cap detail so a badly broken
+          // file doesn't return 50,000 messages
+
+          rejected_detail:
+            rejected.slice(
+              0,
+              20
+            )
         });
-      });
-
-      loadAll();
-
-      if (rejected.length > 0) {
-        console.log('Rejected rows in ' + fileName + ':');
-        rejected.slice(0, 20).forEach(r => console.log('  line ' + r.line + ': ' + r.reason));
       }
-
-      res.json({
-        success: true,
-        dataset: key,
-        table: spec.table,
-        total_rows: rows.length,
-        loaded: inserted,
-        rejected: rejected.length,
-        // cap the detail so a badly broken file doesn't return 50,000 messages
-        rejected_detail: rejected.slice(0, 20)
-      });
-    })
+    )
 );
 
 
