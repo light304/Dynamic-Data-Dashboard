@@ -1,3 +1,10 @@
+//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category, 
+// and view the detailed records behind that summary. Instead of only seeing aggregated values, 
+// users can inspect the individual sales transactions that contributed to the chart. 
+// The existing dashboard filters, such as year, period, 
+// and region, are carried into the drill-down so the displayed data remains relevant to the current view. 
+// Double-clicking is kept separate and is used to expand the chart, while a single click opens the detailed data table.
+
 package dashboard.gui;
 
 import dashboard.database.ApiClient;
