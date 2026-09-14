@@ -1,6 +1,5 @@
 package dashboard.gui;
 
-import javax.swing.*;
 
 /**
  * Sales analytics page.
