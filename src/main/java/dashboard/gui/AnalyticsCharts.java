@@ -663,35 +663,45 @@ public static JPanel pie(
     // =========================================================
     // CREATE CHART PANEL
     // =========================================================
-
     private static ChartPanel createChartPanel(
-            JFreeChart chart
-    ) {
+        JFreeChart chart
+) {
 
-        ChartPanel chartPanel =
-                new ChartPanel(chart);
+    ChartPanel chartPanel =
+            new ChartPanel(chart);
 
-        chartPanel.setBorder(null);
+    chartPanel.setBorder(null);
 
-        chartPanel.setBackground(
-                Color.WHITE
-        );
+    chartPanel.setBackground(
+            Color.WHITE
+    );
 
-        chartPanel.setMinimumDrawWidth(0);
-        chartPanel.setMinimumDrawHeight(0);
+    // Allow charts to resize smoothly with the dashboard.
+    chartPanel.setMinimumDrawWidth(0);
+    chartPanel.setMinimumDrawHeight(0);
 
-        chartPanel.setMaximumDrawWidth(
-                Integer.MAX_VALUE
-        );
+    chartPanel.setMaximumDrawWidth(
+            Integer.MAX_VALUE
+    );
 
-        chartPanel.setMaximumDrawHeight(
-                Integer.MAX_VALUE
-        );
+    chartPanel.setMaximumDrawHeight(
+            Integer.MAX_VALUE
+    );
 
-        chartPanel.setMouseWheelEnabled(false);
+    /*
+     * Disable JFreeChart's default drag-to-zoom behaviour.
+     *
+     * Users can still single-click charts for drill-downs
+     * and double-click them to open the expanded view.
+     */
+    chartPanel.setDomainZoomable(false);
+    chartPanel.setRangeZoomable(false);
 
-        return chartPanel;
-    }
+    // Mouse wheel zoom is disabled on normal dashboard cards.
+    chartPanel.setMouseWheelEnabled(false);
+
+    return chartPanel;
+}
 
     // =========================================================
     // EXPANDED CHART WINDOW
