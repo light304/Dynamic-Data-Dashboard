@@ -5,36 +5,287 @@ import dashboard.database.AnalyticsApi;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.Map;
 
 public final class DrilldownDialog {
 
     private DrilldownDialog() {}
 
-    public static void showSales(Component parent, String month, String category, String region) {
+
+    // =========================================================
+    // SALES
+    // =========================================================
+
+    public static void showSales(
+            Component parent,
+            String month,
+            String category,
+            String region
+    ) {
+
+        showSales(
+                parent,
+                month,
+                null,
+                category,
+                region
+        );
+    }
+
+
+    public static void showSales(
+            Component parent,
+            String month,
+            String week,
+            String category,
+            String region
+    ) {
+
         try {
-            AnalyticsApi.TableData data = AnalyticsApi.drilldownSales(month, category, region);
-            DefaultTableModel model = new DefaultTableModel(data.columns(), 0) {
-                @Override public boolean isCellEditable(int row, int column) { return false; }
-            };
-            for (Object[] row : data.rows()) model.addRow(row);
 
-            JTable table = new JTable(model);
-            table.setAutoCreateRowSorter(true);
-            table.setFillsViewportHeight(true);
+            AnalyticsApi.TableData data =
+                    AnalyticsApi.drilldownSales(
+                            month,
+                            week,
+                            category,
+                            region
+                    );
 
-            JScrollPane scroll = new JScrollPane(table);
-            scroll.setPreferredSize(new Dimension(950, 520));
+            String title =
+                    "Sales drill-down";
 
-            String title = "Sales drill-down";
-            if (month != null) title += " - " + month;
-            if (category != null) title += " - " + category;
+            if (
+                    month != null
+                    && !month.isBlank()
+            ) {
+                title += " - " + month;
+            }
 
-            JOptionPane.showMessageDialog(parent, scroll, title, JOptionPane.PLAIN_MESSAGE);
+            if (
+                    week != null
+                    && !week.isBlank()
+            ) {
+                title += " - " + week;
+            }
+
+            if (
+                    category != null
+                    && !category.isBlank()
+            ) {
+                title += " - " + category;
+            }
+
+            if (
+                    region != null
+                    && !region.isBlank()
+                    && !"All Regions".equals(region)
+            ) {
+                title += " - " + region;
+            }
+
+            showTable(
+                    parent,
+                    title,
+                    data
+            );
+
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(parent,
-                    "Unable to load drill-down data:\n" + ex.getMessage(),
-                    "Drill-down error",
-                    JOptionPane.ERROR_MESSAGE);
+
+            showError(
+                    parent,
+                    "Sales drill-down",
+                    ex
+            );
         }
+    }
+
+
+    // =========================================================
+    // INVENTORY
+    // =========================================================
+
+    public static void showInventory(
+            Component parent,
+            String warehouse,
+            Map<String, String> filters
+    ) {
+
+        try {
+
+            AnalyticsApi.TableData data =
+                    AnalyticsApi.drilldownInventory(
+                            warehouse,
+                            filters
+                    );
+
+            String title =
+                    "Inventory drill-down";
+
+            if (
+                    warehouse != null
+                    && !warehouse.isBlank()
+            ) {
+                title += " - " + warehouse;
+            }
+
+            showTable(
+                    parent,
+                    title,
+                    data
+            );
+
+        } catch (Exception ex) {
+
+            showError(
+                    parent,
+                    "Inventory drill-down",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // MARKETING
+    // =========================================================
+
+    public static void showMarketing(
+            Component parent,
+            String channel,
+            Map<String, String> filters
+    ) {
+
+        try {
+
+            AnalyticsApi.TableData data =
+                    AnalyticsApi.drilldownMarketing(
+                            channel,
+                            filters
+                    );
+
+            String title =
+                    "Marketing drill-down";
+
+            if (
+                    channel != null
+                    && !channel.isBlank()
+            ) {
+                title += " - " + channel;
+            }
+
+            showTable(
+                    parent,
+                    title,
+                    data
+            );
+
+        } catch (Exception ex) {
+
+            showError(
+                    parent,
+                    "Marketing drill-down",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // COMMON TABLE WINDOW
+    // =========================================================
+
+    private static void showTable(
+            Component parent,
+            String title,
+            AnalyticsApi.TableData data
+    ) {
+
+        if (data.rows().isEmpty()) {
+
+            JOptionPane.showMessageDialog(
+                    parent,
+                    "No records were found for this selection.",
+                    title,
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            return;
+        }
+
+
+        DefaultTableModel model =
+                new DefaultTableModel(
+                        data.columns(),
+                        0
+                ) {
+
+                    @Override
+                    public boolean isCellEditable(
+                            int row,
+                            int column
+                    ) {
+                        return false;
+                    }
+                };
+
+
+        for (
+                Object[] row :
+                data.rows()
+        ) {
+            model.addRow(row);
+        }
+
+
+        JTable table =
+                new JTable(model);
+
+        table.setAutoCreateRowSorter(true);
+
+        table.setFillsViewportHeight(true);
+
+        table.setRowHeight(26);
+
+        table.getTableHeader()
+                .setReorderingAllowed(false);
+
+
+        JScrollPane scroll =
+                new JScrollPane(table);
+
+        scroll.setPreferredSize(
+                new Dimension(
+                        950,
+                        520
+                )
+        );
+
+
+        JOptionPane.showMessageDialog(
+                parent,
+                scroll,
+                title,
+                JOptionPane.PLAIN_MESSAGE
+        );
+    }
+
+
+    // =========================================================
+    // ERROR
+    // =========================================================
+
+    private static void showError(
+            Component parent,
+            String title,
+            Exception ex
+    ) {
+
+        JOptionPane.showMessageDialog(
+                parent,
+                "Unable to load drill-down data:\n"
+                        + ex.getMessage(),
+                title + " error",
+                JOptionPane.ERROR_MESSAGE
+        );
     }
 }

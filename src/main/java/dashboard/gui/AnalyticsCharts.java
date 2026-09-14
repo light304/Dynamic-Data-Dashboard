@@ -22,6 +22,7 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.chart.entity.PieSectionEntity;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -206,62 +207,197 @@ public final class AnalyticsCharts {
     // =========================================================
 
     public static JPanel pie(
-            String title,
-            List<Point> values
-    ) {
+        String title,
+        List<Point> values
+) {
 
-        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+    return pie(
+            title,
+            values,
+            null
+    );
+}
 
-        for (Point p : values) {
-            dataset.setValue(
-                    p.label(),
-                    p.value()
-            );
-        }
 
-        JFreeChart chart = ChartFactory.createPieChart(
-                title,
-                dataset,
-                true,
-                true,
-                false
+public static JPanel pie(
+        String title,
+        List<Point> values,
+        Consumer<String> sectionClick
+) {
+
+    DefaultPieDataset<String> dataset =
+            new DefaultPieDataset<>();
+
+    for (Point p : values) {
+
+        dataset.setValue(
+                p.label(),
+                p.value()
         );
-
-        styleChartTitle(chart);
-
-        chart.setBackgroundPaint(Color.WHITE);
-
-        PiePlot<?> plot = (PiePlot<?>) chart.getPlot();
-
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setOutlineVisible(false);
-
-        plot.setLabelFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        11
-                )
-        );
-
-        plot.setLabelPaint(TEXT);
-
-        plot.setLabelBackgroundPaint(
-                new Color(
-                        248,
-                        250,
-                        252
-                )
-        );
-
-        plot.setLabelOutlinePaint(BORDER);
-
-        plot.setLabelShadowPaint(null);
-
-        styleLegend(chart);
-
-        return wrap(chart, null);
     }
+
+
+    JFreeChart chart =
+            ChartFactory.createPieChart(
+                    title,
+                    dataset,
+                    true,
+                    true,
+                    false
+            );
+
+
+    styleChartTitle(chart);
+
+    chart.setBackgroundPaint(
+            Color.WHITE
+    );
+
+
+    PiePlot<?> plot =
+            (PiePlot<?>) chart.getPlot();
+
+    plot.setBackgroundPaint(
+            Color.WHITE
+    );
+
+    plot.setOutlineVisible(
+            false
+    );
+
+    plot.setLabelFont(
+            new Font(
+                    "SansSerif",
+                    Font.PLAIN,
+                    11
+            )
+    );
+
+    plot.setLabelPaint(TEXT);
+
+    plot.setLabelBackgroundPaint(
+            new Color(
+                    248,
+                    250,
+                    252
+            )
+    );
+
+    plot.setLabelOutlinePaint(
+            BORDER
+    );
+
+    plot.setLabelShadowPaint(
+            null
+    );
+
+    styleLegend(chart);
+
+
+    JPanel card =
+            baseCard();
+
+    card.setLayout(
+            new BorderLayout()
+    );
+
+
+    ChartPanel chartPanel =
+            createChartPanel(chart);
+
+
+    chartPanel.addChartMouseListener(
+            new ChartMouseListener() {
+
+                @Override
+                public void chartMouseMoved(
+                        ChartMouseEvent event
+                ) {
+                }
+
+
+                @Override
+                public void chartMouseClicked(
+                        ChartMouseEvent event
+                ) {
+
+                    /*
+                     * Double-click = expand.
+                     */
+                    if (
+                            event.getTrigger() != null
+                            && event.getTrigger()
+                                    .getClickCount() >= 2
+                    ) {
+
+                        showExpandedChart(chart);
+
+                        return;
+                    }
+
+
+                    /*
+                     * Single-click = pie drill-down.
+                     */
+                    if (
+                            sectionClick != null
+                            && event.getEntity()
+                                    instanceof PieSectionEntity entity
+                    ) {
+
+                        sectionClick.accept(
+                                entity.getSectionKey()
+                                        .toString()
+                        );
+                    }
+                }
+            }
+    );
+
+
+    JLabel hint =
+            new JLabel(
+                    sectionClick == null
+                            ? "Double-click to expand"
+                            : "Click section for details • Double-click to expand",
+                    SwingConstants.RIGHT
+            );
+
+    hint.setFont(
+            new Font(
+                    "SansSerif",
+                    Font.PLAIN,
+                    10
+            )
+    );
+
+    hint.setForeground(
+            SECONDARY_TEXT
+    );
+
+    hint.setBorder(
+            new EmptyBorder(
+                    4,
+                    0,
+                    0,
+                    2
+            )
+    );
+
+
+    card.add(
+            chartPanel,
+            BorderLayout.CENTER
+    );
+
+    card.add(
+            hint,
+            BorderLayout.SOUTH
+    );
+
+
+    return card;
+}
 
     // =========================================================
     // SCATTER CHART

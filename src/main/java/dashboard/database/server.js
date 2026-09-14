@@ -3525,6 +3525,165 @@ app.get(
     )
 );
 // ============================================================
+// INVENTORY DRILL-DOWN
+// ============================================================
+
+app.get(
+  '/api/drilldown/inventory',
+  (req, res) =>
+    safeRoute(
+      res,
+      () => {
+
+        const warehouse =
+          String(
+            req.query.warehouse || ''
+          ).trim();
+
+        const range =
+          dashboardRange(req);
+
+        const where = [
+          'date(i.snapshot_date) BETWEEN date(?) AND date(?)'
+        ];
+
+        const params = [
+          range.start,
+          range.end
+        ];
+
+        if (warehouse) {
+
+          where.push(
+            'i.warehouse = ?'
+          );
+
+          params.push(
+            warehouse
+          );
+        }
+
+        const rows =
+          db.prepare(`
+            SELECT
+              i.inventory_id,
+              i.product_id,
+              p.category,
+              i.stock_level,
+              i.warehouse,
+              i.snapshot_date
+
+            FROM inventory i
+
+            LEFT JOIN products p
+              ON p.product_id = i.product_id
+
+            WHERE
+              ${where.join(' AND ')}
+
+            ORDER BY
+              date(i.snapshot_date) DESC,
+              i.stock_level ASC
+
+            LIMIT 1000
+          `).all(...params);
+
+        res.json({
+          success: true,
+
+          columns: [
+            'inventory_id',
+            'product_id',
+            'category',
+            'stock_level',
+            'warehouse',
+            'snapshot_date'
+          ],
+
+          data: rows
+        });
+      }
+    )
+);
+
+
+// ============================================================
+// MARKETING DRILL-DOWN
+// ============================================================
+
+app.get(
+  '/api/drilldown/marketing',
+  (req, res) =>
+    safeRoute(
+      res,
+      () => {
+
+        const channel =
+          String(
+            req.query.channel || ''
+          ).trim();
+
+        const range =
+          dashboardRange(req);
+
+        const where = [
+          'date(m.campaign_date) BETWEEN date(?) AND date(?)'
+        ];
+
+        const params = [
+          range.start,
+          range.end
+        ];
+
+        if (channel) {
+
+          where.push(
+            'm.channel = ?'
+          );
+
+          params.push(
+            channel
+          );
+        }
+
+        const rows =
+          db.prepare(`
+            SELECT
+              m.campaign_id,
+              m.channel,
+              m.cost,
+              m.conversions,
+              m.campaign_date
+
+            FROM marketing m
+
+            WHERE
+              ${where.join(' AND ')}
+
+            ORDER BY
+              date(m.campaign_date) DESC,
+              m.cost DESC
+
+            LIMIT 1000
+          `).all(...params);
+
+        res.json({
+          success: true,
+
+          columns: [
+            'campaign_id',
+            'channel',
+            'cost',
+            'conversions',
+            'campaign_date'
+          ],
+
+          data: rows
+        });
+      }
+    )
+);
+// ============================================================
 // EXISTING LOW STOCK ALERT
 // ============================================================
 

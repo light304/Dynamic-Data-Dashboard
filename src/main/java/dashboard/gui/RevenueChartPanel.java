@@ -256,92 +256,131 @@ public class RevenueChartPanel extends JPanel {
     // =========================================================
     // DRILL DOWN
     // =========================================================
-
     private void openDrillDown(
-            String clickedPeriod
+        String clickedPeriod
+) {
+
+    String month = null;
+    String week = null;
+
+
+    /*
+     * YEARLY
+     *
+     * Chart bars are:
+     * JAN, FEB, MAR, etc.
+     *
+     * Clicking a month opens that month's sales.
+     */
+    if (
+            "Yearly".equals(
+                    selectedScope
+            )
     ) {
 
-        String month = null;
+        int monthNumber =
+                monthNumberFromShortName(
+                        clickedPeriod
+                );
 
-        /*
-         * Yearly chart:
-         * clickedPeriod = JAN / FEB / MAR etc.
-         */
-        if (
-                "Yearly".equals(
-                        selectedScope
-                )
-        ) {
-
-            int monthNumber =
-                    monthNumberFromShortName(
-                            clickedPeriod
-                    );
-
-            month =
-                    String.format(
-                            "%04d-%02d",
-                            selectedYear,
-                            monthNumber
-                    );
-        }
-
-        /*
-         * Quarterly chart:
-         * also displays month names.
-         */
-        else if (
-                "Quarterly".equals(
-                        selectedScope
-                )
-        ) {
-
-            int monthNumber =
-                    monthNumberFromShortName(
-                            clickedPeriod
-                    );
-
-            month =
-                    String.format(
-                            "%04d-%02d",
-                            selectedYear,
-                            monthNumber
-                    );
-        }
-
-        /*
-         * Monthly chart displays weeks.
-         *
-         * Existing backend only supports month-level
-         * drill-down, so clicking Week 1/2/etc.
-         * currently opens the selected month's rows.
-         */
-        else if (
-                "Monthly".equals(
-                        selectedScope
-                )
-        ) {
-
-            int monthNumber =
-                    monthNumber(
-                            selectedPeriod
-                    );
-
-            month =
-                    String.format(
-                            "%04d-%02d",
-                            selectedYear,
-                            monthNumber
-                    );
-        }
-
-        DrilldownDialog.showSales(
-                this,
-                month,
-                null,
-                selectedRegion
-        );
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
     }
+
+
+    /*
+     * QUARTERLY
+     *
+     * Chart bars are the three months
+     * inside the selected quarter.
+     *
+     * Example:
+     * Q1 -> JAN, FEB, MAR
+     */
+    else if (
+            "Quarterly".equals(
+                    selectedScope
+            )
+    ) {
+
+        int monthNumber =
+                monthNumberFromShortName(
+                        clickedPeriod
+                );
+
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
+    }
+
+
+    /*
+     * MONTHLY
+     *
+     * Chart bars are:
+     * Week 1
+     * Week 2
+     * Week 3
+     * Week 4
+     * Week 5
+     *
+     * We send BOTH:
+     *
+     * month = 2023-01
+     * week  = Week 2
+     *
+     * so the backend returns only the
+     * transactions from that exact week.
+     */
+    else if (
+            "Monthly".equals(
+                    selectedScope
+            )
+    ) {
+
+        int monthNumber =
+                monthNumber(
+                        selectedPeriod
+                );
+
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
+
+        week =
+                clickedPeriod;
+    }
+
+
+    /*
+     * Open the sales transaction table.
+     *
+     * New signature:
+     *
+     * parent
+     * month
+     * week
+     * category
+     * region
+     */
+    DrilldownDialog.showSales(
+            this,
+            month,
+            week,
+            null,
+            selectedRegion
+    );
+}
 
     private int monthNumberFromShortName(
             String month

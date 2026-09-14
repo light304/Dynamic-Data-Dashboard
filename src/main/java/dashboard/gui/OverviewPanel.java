@@ -40,6 +40,7 @@ public class OverviewPanel extends JPanel
     private DashboardFilter currentFilter =
             DashboardFilter.defaults();
 
+
     public OverviewPanel(
             Map<String, TableMeta> schema
     ) {
@@ -65,6 +66,7 @@ public class OverviewPanel extends JPanel
         createLayout();
     }
 
+
     // =========================================================
     // MAIN LAYOUT
     // =========================================================
@@ -75,6 +77,7 @@ public class OverviewPanel extends JPanel
                 createHeader(),
                 BorderLayout.NORTH
         );
+
 
         JPanel content =
                 new JPanel();
@@ -88,7 +91,11 @@ public class OverviewPanel extends JPanel
 
         content.setBackground(BACKGROUND);
 
+
+        // =====================================================
         // KPI CARDS
+        // =====================================================
+
         kpiPanel.setAlignmentX(
                 Component.LEFT_ALIGNMENT
         );
@@ -99,7 +106,11 @@ public class OverviewPanel extends JPanel
                 Box.createVerticalStrut(14)
         );
 
-        // ANALYTICS TITLE
+
+        // =====================================================
+        // ANALYTICS HEADER
+        // =====================================================
+
         JPanel analyticsHeader =
                 new JPanel(
                         new BorderLayout()
@@ -118,6 +129,7 @@ public class OverviewPanel extends JPanel
                 )
         );
 
+
         JPanel textArea =
                 new JPanel();
 
@@ -129,6 +141,7 @@ public class OverviewPanel extends JPanel
                         BoxLayout.Y_AXIS
                 )
         );
+
 
         JLabel analyticsTitle =
                 new JLabel(
@@ -144,6 +157,7 @@ public class OverviewPanel extends JPanel
         );
 
         analyticsTitle.setForeground(PRIMARY);
+
 
         JLabel analyticsSubtitle =
                 new JLabel(
@@ -162,6 +176,7 @@ public class OverviewPanel extends JPanel
                 SECONDARY
         );
 
+
         textArea.add(analyticsTitle);
 
         textArea.add(
@@ -170,16 +185,19 @@ public class OverviewPanel extends JPanel
 
         textArea.add(analyticsSubtitle);
 
+
         analyticsHeader.add(
                 textArea,
                 BorderLayout.WEST
         );
+
 
         content.add(analyticsHeader);
 
         content.add(
                 Box.createVerticalStrut(8)
         );
+
 
         // =====================================================
         // CHART GRID
@@ -202,6 +220,7 @@ public class OverviewPanel extends JPanel
                 Component.LEFT_ALIGNMENT
         );
 
+
         chartsGrid.add(
                 revenueChartPanel
         );
@@ -213,11 +232,13 @@ public class OverviewPanel extends JPanel
                 )
         );
 
+
         content.add(chartsGrid);
 
         content.add(
                 Box.createVerticalStrut(10)
         );
+
 
         // =====================================================
         // SCROLLING
@@ -236,6 +257,7 @@ public class OverviewPanel extends JPanel
                 content,
                 BorderLayout.NORTH
         );
+
 
         JScrollPane scrollPane =
                 new JScrollPane(
@@ -260,11 +282,13 @@ public class OverviewPanel extends JPanel
                 .getViewport()
                 .setBackground(BACKGROUND);
 
+
         add(
                 scrollPane,
                 BorderLayout.CENTER
         );
     }
+
 
     // =========================================================
     // HEADER
@@ -288,6 +312,7 @@ public class OverviewPanel extends JPanel
                 )
         );
 
+
         JPanel heading =
                 new JPanel();
 
@@ -299,6 +324,7 @@ public class OverviewPanel extends JPanel
                         BoxLayout.Y_AXIS
                 )
         );
+
 
         JLabel title =
                 new JLabel(
@@ -314,6 +340,7 @@ public class OverviewPanel extends JPanel
         );
 
         title.setForeground(PRIMARY);
+
 
         JLabel subtitle =
                 new JLabel(
@@ -332,6 +359,7 @@ public class OverviewPanel extends JPanel
                 SECONDARY
         );
 
+
         heading.add(title);
 
         heading.add(
@@ -340,7 +368,11 @@ public class OverviewPanel extends JPanel
 
         heading.add(subtitle);
 
+
+        // =====================================================
         // REFRESH BUTTON
+        // =====================================================
+
         refreshButton.setFont(
                 new Font(
                         "SansSerif",
@@ -388,6 +420,7 @@ public class OverviewPanel extends JPanel
                 e -> refreshEverything()
         );
 
+
         JPanel refreshArea =
                 new JPanel(
                         new FlowLayout(
@@ -403,6 +436,7 @@ public class OverviewPanel extends JPanel
                 refreshButton
         );
 
+
         header.add(
                 heading,
                 BorderLayout.WEST
@@ -413,8 +447,10 @@ public class OverviewPanel extends JPanel
                 BorderLayout.EAST
         );
 
+
         return header;
     }
+
 
     // =========================================================
     // FILTER
@@ -433,6 +469,7 @@ public class OverviewPanel extends JPanel
         refreshEverything();
     }
 
+
     // =========================================================
     // REFRESH
     // =========================================================
@@ -441,6 +478,7 @@ public class OverviewPanel extends JPanel
 
         refreshKpis();
 
+
         revenueChartPanel.applyFilters(
                 currentFilter.year(),
                 currentFilter.scope(),
@@ -448,8 +486,10 @@ public class OverviewPanel extends JPanel
                 currentFilter.region()
         );
 
+
         refreshOverviewCharts();
     }
+
 
     // =========================================================
     // KPI DATA
@@ -471,6 +511,7 @@ public class OverviewPanel extends JPanel
                 );
             }
 
+
             @Override
             protected void done() {
 
@@ -491,6 +532,7 @@ public class OverviewPanel extends JPanel
         }.execute();
     }
 
+
     // =========================================================
     // CHART DATA
     // =========================================================
@@ -502,6 +544,7 @@ public class OverviewPanel extends JPanel
         refreshButton.setText(
                 "Loading..."
         );
+
 
         chartsGrid.removeAll();
 
@@ -516,8 +559,10 @@ public class OverviewPanel extends JPanel
                 )
         );
 
+
         chartsGrid.revalidate();
         chartsGrid.repaint();
+
 
         new SwingWorker<
                 List<JPanel>,
@@ -531,8 +576,10 @@ public class OverviewPanel extends JPanel
                 List<JPanel> loaded =
                         new ArrayList<>();
 
+
                 Map<String, String> params =
                         currentFilter.toParams();
+
 
                 // =================================================
                 // REVENUE BY REGION
@@ -559,6 +606,7 @@ public class OverviewPanel extends JPanel
                         )
                 );
 
+
                 // =================================================
                 // REVENUE BY CATEGORY
                 // =================================================
@@ -584,8 +632,10 @@ public class OverviewPanel extends JPanel
                         )
                 );
 
+
                 // =================================================
                 // STOCK BY WAREHOUSE
+                // CLICK = INVENTORY DRILL-DOWN
                 // =================================================
 
                 loaded.add(
@@ -599,12 +649,19 @@ public class OverviewPanel extends JPanel
                                 ),
                                 "Stock",
                                 false,
-                                null
+                                warehouse ->
+                                        DrilldownDialog.showInventory(
+                                                OverviewPanel.this,
+                                                warehouse,
+                                                currentFilter.toParams()
+                                        )
                         )
                 );
 
+
                 // =================================================
-                // MARKETING SPEND
+                // MARKETING SPEND BY CHANNEL
+                // CLICK PIE SECTION = MARKETING DRILL-DOWN
                 // =================================================
 
                 loaded.add(
@@ -613,17 +670,26 @@ public class OverviewPanel extends JPanel
                                 AnalyticsApi.points(
                                         "api/marketing/spend-channel",
                                         params
-                                )
+                                ),
+                                channel ->
+                                        DrilldownDialog.showMarketing(
+                                                OverviewPanel.this,
+                                                channel,
+                                                currentFilter.toParams()
+                                        )
                         )
                 );
 
+
                 return loaded;
             }
+
 
             @Override
             protected void done() {
 
                 chartsGrid.removeAll();
+
 
                 /*
                  * Original Overview Revenue chart.
@@ -632,14 +698,16 @@ public class OverviewPanel extends JPanel
                         revenueChartPanel
                 );
 
+
                 try {
 
                     List<JPanel> loaded =
                             get();
 
+
                     for (
-                            JPanel chart
-                            : loaded
+                            JPanel chart :
+                            loaded
                     ) {
 
                         /*
@@ -679,11 +747,13 @@ public class OverviewPanel extends JPanel
                     );
                 }
 
+
                 refreshButton.setEnabled(true);
 
                 refreshButton.setText(
                         "Refresh"
                 );
+
 
                 chartsGrid.revalidate();
                 chartsGrid.repaint();
