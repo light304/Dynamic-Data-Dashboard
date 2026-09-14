@@ -20,7 +20,6 @@ import java.text.NumberFormat;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class RevenueByRegionChart extends JPanel {
 

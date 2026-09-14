@@ -14,6 +14,99 @@ const dbPath = path.join(
 
 const db = new Database(dbPath);
 
+// CSV parsing
+const { parse } = require('csv-parse/sync');
+
+// Maps each expected filename to its table, columns, and validation rules.
+// `columns` maps CSV header -> database column (the two date renames live here).
+const DATASETS = {
+
+  products: {
+    table: 'products',
+    pk: 'product_id',
+    columns: {
+      product_id: 'product_id',
+      category: 'category',
+      price: 'price',
+      cost: 'cost'
+    },
+    numeric: ['product_id', 'price', 'cost'],
+    required: ['product_id'],
+    dates: [],
+    parents: []
+  },
+
+  customers: {
+    table: 'customers',
+    pk: 'customer_id',
+    columns: {
+      customer_id: 'customer_id',
+      age: 'age',
+      gender: 'gender',
+      country: 'country',
+      signup_date: 'signup_date'
+    },
+    numeric: ['customer_id', 'age'],
+    required: ['customer_id'],
+    dates: ['signup_date'],
+    parents: []
+  },
+
+  marketing: {
+    table: 'marketing',
+    pk: 'campaign_id',
+    columns: {
+      campaign_id: 'campaign_id',
+      channel: 'channel',
+      cost: 'cost',
+      conversions: 'conversions',
+      date: 'campaign_date'          // rename
+    },
+    numeric: ['campaign_id', 'cost', 'conversions'],
+    required: ['campaign_id'],
+    dates: ['date'],
+    parents: []
+  },
+
+  inventory: {
+    table: 'inventory',
+    pk: 'inventory_id',
+    columns: {
+      inventory_id: 'inventory_id',
+      product_id: 'product_id',
+      stock_level: 'stock_level',
+      warehouse: 'warehouse',
+      date: 'snapshot_date'          // rename
+    },
+    numeric: ['inventory_id', 'product_id', 'stock_level'],
+    required: ['inventory_id', 'product_id'],
+    dates: ['date'],
+    parents: [{ column: 'product_id', table: 'products', key: 'product_id' }]
+  },
+
+  sales: {
+    table: 'sales',
+    pk: 'order_id',
+    columns: {
+      order_id: 'order_id',
+      customer_id: 'customer_id',
+      product_id: 'product_id',
+      quantity: 'quantity',
+      order_date: 'order_date',
+      region: 'region',
+      price: 'price',
+      revenue: 'revenue'
+    },
+    numeric: ['order_id', 'customer_id', 'product_id', 'quantity', 'price', 'revenue'],
+    required: ['order_id', 'customer_id', 'product_id'],
+    dates: ['order_date'],
+    parents: [
+      { column: 'customer_id', table: 'customers', key: 'customer_id' },
+      { column: 'product_id',  table: 'products',  key: 'product_id' }
+    ]
+  }
+};
+
 
 // ============================================================
 // SCHEMA INTROSPECTION
@@ -306,77 +399,6 @@ app.get('/api/query/compare-join', (req, res) => {
 
     const rows =
       db.prepare(query).all();
-
-    res.json({
-      success: true,
-      data: rows
-    });
-
-  } catch (err) {
-
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-
-// ============================================================
-// KPI SNAPSHOT
-// ============================================================
-
-app.get('/api/kpis/summary', (req, res) => {
-
-  try {
-
-    const {
-      year_from,
-      year_to
-    } = req.query;
-
-    let query =
-      'SELECT * FROM kpi_snapshot';
-
-    const conditions = [];
-    const params = [];
-
-    if (year_from) {
-
-      conditions.push(
-        'kpi_year >= ?'
-      );
-
-      params.push(
-        year_from
-      );
-    }
-
-    if (year_to) {
-
-      conditions.push(
-        'kpi_year <= ?'
-      );
-
-      params.push(
-        year_to
-      );
-    }
-
-    if (conditions.length > 0) {
-
-      query +=
-        ' WHERE '
-        + conditions.join(' AND ');
-    }
-
-    query +=
-      ' ORDER BY kpi_year ASC';
-
-    const rows =
-      db.prepare(query).all(
-        ...params
-      );
 
     res.json({
       success: true,
@@ -882,7 +904,7 @@ app.get(
 
         const growth =
           previousRevenue === 0
-            ? 0
+            ? null
             : (
                 (
                   currentRevenue
@@ -968,7 +990,24 @@ app.get(
             .get(
               ...profitParams
             );
+        
+        // -----------------------------
+        // MARKETING COST (for net profit)
+        // marketing has no region column, so it is only
+        // deducted on whole-business views
+        // -----------------------------
+        const marketingCostRow =
+          db.prepare(`
+            SELECT COALESCE(SUM(cost), 0) AS cost
+            FROM marketing
+            WHERE campaign_date BETWEEN ? AND ?
+          `).get(range.start, range.end);
 
+        const isWholeBusiness = (region === 'All Regions');
+
+        const netProfit = isWholeBusiness
+          ? profitRow.profit - marketingCostRow.cost
+          : profitRow.profit;
 
         // -----------------------------
         // INVENTORY TURNOVER
@@ -980,12 +1019,8 @@ app.get(
           range.end
         ];
 
-        const cogsRegion =
-          regionClause(
-            's',
-            region,
-            cogsParams
-          );
+        // No region filter for COGS because inventory has no region column, so turnover is always whole-business
+        const cogsRegion = '';
 
         const cogs =
           db.prepare(`
@@ -1020,22 +1055,30 @@ app.get(
           db.prepare(`
             SELECT
               COALESCE(
-                AVG(
-                  i.stock_level
-                  * p.cost
+                SUM(
+                  avg_stock
+                  * cost
                 ),
                 0
               ) AS value
-
-            FROM inventory i
-
-            JOIN products p
-              ON p.product_id
-              = i.product_id
-
-            WHERE
-              i.snapshot_date
-              BETWEEN ? AND ?
+            FROM (
+              SELECT
+                i.product_id,
+                AVG(
+                  i.stock_level
+                ) AS avg_stock,
+                p.cost
+              FROM inventory i
+              JOIN products p
+                ON p.product_id
+                = i.product_id
+              WHERE
+                i.snapshot_date
+                BETWEEN ? AND ?
+              GROUP BY
+                i.product_id,
+                p.cost
+            )
           `)
             .get(
               range.start,
@@ -1056,19 +1099,32 @@ app.get(
         // sales + customers
         // -----------------------------
 
-        const priorParams = [
-          previous.start,
-          previous.end
+         const existingBase =
+          db.prepare(`
+            SELECT
+              COUNT(*) AS value
+
+            FROM customers
+
+            WHERE
+              signup_date < ?
+          `)
+            .get(
+              range.start
+            )
+            .value;
+
+
+        const retainedParams = [
+          range.start,
+          range.start,
+          range.end
         ];
 
-        const priorRegion =
-          regionClause(
-            's',
-            region,
-            priorParams
-          );
+        // Customers has no region, so retention is always whole-business
+        const retainedRegion = '';
 
-        const priorCount =
+        const retained =
           db.prepare(`
             SELECT
               COUNT(
@@ -1082,140 +1138,40 @@ app.get(
               = s.customer_id
 
             WHERE
-              s.order_date
+              c.signup_date < ?
+
+              AND s.order_date
               BETWEEN ? AND ?
 
-              ${priorRegion}
+              ${retainedRegion}
           `)
             .get(
-              ...priorParams
-            )
-            .value;
-
-
-        const returnedParams = [
-          range.start,
-          range.end
-        ];
-
-        let currentRegionSql = '';
-        let previousRegionSql = '';
-
-        if (
-          region
-          && region !== 'All Regions'
-        ) {
-
-          currentRegionSql =
-            'AND current.region = ?';
-
-          returnedParams.push(
-            region
-          );
-        }
-
-        returnedParams.push(
-          previous.start,
-          previous.end
-        );
-
-        if (
-          region
-          && region !== 'All Regions'
-        ) {
-
-          previousRegionSql =
-            'AND previousSales.region = ?';
-
-          returnedParams.push(
-            region
-          );
-        }
-
-
-        const returned =
-          db.prepare(`
-            SELECT
-              COUNT(
-                DISTINCT current.customer_id
-              ) AS value
-
-            FROM sales current
-
-            JOIN customers c
-              ON c.customer_id
-              = current.customer_id
-
-            WHERE
-              current.order_date
-              BETWEEN ? AND ?
-
-              ${currentRegionSql}
-
-              AND EXISTS (
-
-                SELECT 1
-
-                FROM sales previousSales
-
-                WHERE
-                  previousSales.customer_id
-                  = current.customer_id
-
-                  AND
-                  previousSales.order_date
-                  BETWEEN ? AND ?
-
-                  ${previousRegionSql}
-              )
-          `)
-            .get(
-              ...returnedParams
+              ...retainedParams
             )
             .value;
 
 
         const retention =
-          priorCount === 0
+          existingBase === 0
             ? 0
-            : returned
+            : retained
               * 100.0
-              / priorCount;
+              / existingBase;
 
 
-        // -----------------------------
-        // MARKETING ROI
+                // -----------------------------
+        // COST PER CONVERSION
         //
-        // Whole-business only because
-        // marketing has no region FK.
+        // Replaces Marketing ROI. sales and marketing share no key,
+        // so revenue cannot be attributed to campaigns. Marketing has
+        // no region either, so this is whole-business only.
         // -----------------------------
 
-        const wholeRevenue =
+        const conversions =
           db.prepare(`
             SELECT
               COALESCE(
-                SUM(revenue),
-                0
-              ) AS value
-
-            FROM sales
-
-            WHERE
-              order_date
-              BETWEEN ? AND ?
-          `)
-            .get(
-              range.start,
-              range.end
-            )
-            .value;
-
-
-        const marketingCost =
-          db.prepare(`
-            SELECT
-              COALESCE(
-                SUM(cost),
+                SUM(conversions),
                 0
               ) AS value
 
@@ -1232,17 +1188,11 @@ app.get(
             .value;
 
 
-        const marketingRoi =
-          marketingCost === 0
+        const costPerConversion =
+          conversions === 0
             ? 0
-            : (
-                (
-                  wholeRevenue
-                  - marketingCost
-                )
-                / marketingCost
-              )
-              * 100;
+            : marketingCostRow.cost
+              / conversions;
 
 
         res.json({
@@ -1259,18 +1209,23 @@ app.get(
               ),
 
             revenue_growth_pct:
-              Number(
-                growth.toFixed(
-                  2
-                )
-              ),
+              growth === null
+                ? null
+                : Number(
+                    growth.toFixed(
+                      2
+                    )
+                  ),
 
             profit:
               Number(
-                profitRow.profit.toFixed(
+                netProfit.toFixed(
                   2
                 )
               ),
+            
+            profit_includes_marketing:
+              isWholeBusiness,
 
             profit_margin_pct:
               Number(
@@ -1286,6 +1241,9 @@ app.get(
                 )
               ),
 
+            inventory_turnover_region_ignored:
+              !isWholeBusiness,
+
             customer_retention_pct:
               Number(
                 retention.toFixed(
@@ -1293,9 +1251,9 @@ app.get(
                 )
               ),
 
-            marketing_roi_pct:
+            cost_per_conversion:
               Number(
-                marketingRoi.toFixed(
+                costPerConversion.toFixed(
                   2
                 )
               )
@@ -1770,20 +1728,8 @@ app.get(
           range.end
         ];
 
+        // No region filter for COGS because inventory has no region column, so turnover is always whole-business
         let regionSql = '';
-
-        if (
-          region
-          && region !== 'All Regions'
-        ) {
-
-          regionSql =
-            'AND s.region = ?';
-
-          params.push(
-            region
-          );
-        }
 
         params.push(
           range.start,
@@ -1826,25 +1772,45 @@ app.get(
 
               SELECT
 
-                strftime(
-                  '%Y-%m',
-                  i.snapshot_date
-                ) AS month,
+                month,
 
-                AVG(
-                  i.stock_level
-                  * p.cost
+                SUM(
+                  avg_stock
+                  * cost
                 ) AS inv_value
 
-              FROM inventory i
+              FROM (
 
-              JOIN products p
-                ON p.product_id
-                = i.product_id
+                SELECT
 
-              WHERE
-                i.snapshot_date
-                BETWEEN ? AND ?
+                  strftime(
+                    '%Y-%m',
+                    i.snapshot_date
+                  ) AS month,
+
+                  i.product_id,
+
+                  AVG(
+                    i.stock_level
+                  ) AS avg_stock,
+
+                  p.cost
+
+                FROM inventory i
+
+                JOIN products p
+                  ON p.product_id
+                  = i.product_id
+
+                WHERE
+                  i.snapshot_date
+                  BETWEEN ? AND ?
+
+                GROUP BY
+                  month,
+                  i.product_id,
+                  p.cost
+              )
 
               GROUP BY month
             )
@@ -2104,6 +2070,157 @@ app.get(
         sendRows(
           res,
           data
+        );
+      }
+    )
+);
+
+// CROSS KPI:
+// Stock cover in weeks
+// inventory + sales + products
+//
+// How long current stock would last at the current sales rate.
+// Uses average stock across the period, so this is a typical
+// holding position rather than a live one.
+
+app.get(
+  '/api/inventory/stock-cover-weeks',
+  (req, res) =>
+    safeRoute(
+      res,
+      () => {
+
+        const range =
+          dashboardRange(
+            req
+          );
+
+        const region =
+          String(
+            req.query.region
+            || 'All Regions'
+          );
+
+        const weeks =
+          Math.max(
+            1,
+            (
+              new Date(range.end)
+              - new Date(range.start)
+            )
+            / 604800000
+          );
+
+        const params = [
+          range.start,
+          range.end,
+          range.start,
+          range.end
+        ];
+
+        // Inventory has no region column, so stock cover is whole-business only
+        let regionSql = '';
+
+        params.push(
+          weeks
+        );
+
+        const rows =
+          db.prepare(`
+                        WITH stock AS (
+
+              SELECT
+
+                category,
+
+                SUM(
+                  avg_stock
+                ) AS avg_stock
+
+              FROM (
+
+                SELECT
+
+                  p.category,
+
+                  i.product_id,
+
+                  AVG(
+                    i.stock_level
+                  ) AS avg_stock
+
+                FROM inventory i
+
+                JOIN products p
+                  ON p.product_id
+                  = i.product_id
+
+                WHERE
+                  i.snapshot_date
+                  BETWEEN ? AND ?
+
+                GROUP BY
+                  p.category,
+                  i.product_id
+              )
+
+              GROUP BY category
+            ),
+
+            sold AS (
+
+              SELECT
+
+                p.category,
+
+                SUM(
+                  s.quantity
+                ) AS sold
+
+              FROM sales s
+
+              JOIN products p
+                ON p.product_id
+                = s.product_id
+
+              WHERE
+                s.order_date
+                BETWEEN ? AND ?
+
+                ${regionSql}
+
+              GROUP BY p.category
+            )
+
+            SELECT
+
+              stock.category
+                AS label,
+
+              ROUND(
+                stock.avg_stock
+                /
+                NULLIF(
+                  sold.sold / ?,
+                  0
+                ),
+                1
+              ) AS value
+
+            FROM stock
+
+            JOIN sold
+              USING(category)
+
+            ORDER BY value DESC
+          `)
+            .all(
+              ...params
+            );
+
+        sendRows(
+          res,
+          rows
         );
       }
     )
@@ -2529,10 +2646,10 @@ app.get(
 
 
 // CROSS KPI:
-// Whole-business Marketing ROI over time
+// Whole-business Cost per Conversion over time
 
 app.get(
-  '/api/marketing/roi-trend',
+  '/api/marketing/cost-per-conversion-trend',
   (req, res) =>
     safeRoute(
       res,
@@ -2546,78 +2663,34 @@ app.get(
 
         const rows =
           db.prepare(`
-            WITH revenue AS (
-
-              SELECT
-
-                strftime(
-                  '%Y-%m',
-                  order_date
-                ) AS month,
-
-                SUM(
-                  revenue
-                ) AS revenue
-
-              FROM sales
-
-              WHERE
-                order_date
-                BETWEEN ? AND ?
-
-              GROUP BY month
-            ),
-
-            spend AS (
-
-              SELECT
-
-                strftime(
-                  '%Y-%m',
-                  campaign_date
-                ) AS month,
-
-                SUM(
-                  cost
-                ) AS cost
-
-              FROM marketing
-
-              WHERE
-                campaign_date
-                BETWEEN ? AND ?
-
-              GROUP BY month
-            )
-
             SELECT
 
-              revenue.month
-                AS label,
+              strftime(
+                '%Y-%m',
+                campaign_date
+              ) AS label,
 
               ROUND(
 
                 CASE
 
                   WHEN
-                    spend.cost
-                    IS NULL
-
-                    OR
-                    spend.cost
-                    = 0
+                    SUM(
+                      conversions
+                    ) = 0
 
                   THEN 0
 
                   ELSE
 
-                    (
-                      revenue.revenue
-                      - spend.cost
+                    SUM(
+                      cost
                     )
-                    * 100.0
+                    * 1.0
                     /
-                    spend.cost
+                    SUM(
+                      conversions
+                    )
 
                 END,
 
@@ -2625,18 +2698,17 @@ app.get(
 
               ) AS value
 
-            FROM revenue
+            FROM marketing
 
-            JOIN spend
-              ON spend.month
-              = revenue.month
+            WHERE
+              campaign_date
+              BETWEEN ? AND ?
 
-            ORDER BY
-              revenue.month
+            GROUP BY label
+
+            ORDER BY label
           `)
             .all(
-              range.start,
-              range.end,
               range.start,
               range.end
             );
@@ -3335,37 +3407,6 @@ app.get(
 
 
 // ============================================================
-// EXISTING MARKETING VIEW
-// ============================================================
-
-app.get(
-  '/api/kpis/marketing',
-  (req, res) => {
-
-    try {
-
-      const rows =
-        db.prepare(
-          'SELECT * FROM v_kpi_marketing ORDER BY yr, channel'
-        ).all();
-
-      res.json({
-        success: true,
-        data: rows
-      });
-
-    } catch (err) {
-
-      res.status(500).json({
-        success: false,
-        error: err.message
-      });
-    }
-  }
-);
-
-
-// ============================================================
 // EXISTING LOW STOCK ALERT
 // ============================================================
 
@@ -3395,54 +3436,193 @@ app.get(
   }
 );
 
+// ============================================================
+// CSV UPLOAD
+// ============================================================
 
-// ============================================================
-// KPI REFRESH
-// ============================================================
+function uploadError(res, problem, fix) {
+  return res.status(400).json({
+    success: false,
+    error: problem + (fix ? '\n\n' + fix : '')
+  });
+}
 
 app.post(
-  '/api/kpis/refresh',
-  (req, res) => {
+  '/api/upload',
+  (req, res) =>
+    safeRoute(res, () => {
 
-    try {
+      const filePath = String(req.body.path || '').trim();
 
-      const refreshScript =
-        fs.readFileSync(
+      if (!filePath || !fs.existsSync(filePath)) {
+        return uploadError(res, 'File not found: ' + filePath);
+      }
 
-          path.join(
-            __dirname,
-            'refresh_kpi_snapshot_sqlite.sql'
-          ),
+      // Dataset identified by filename
+      const fileName = path.basename(filePath).toLowerCase();
+      const key = Object.keys(DATASETS)
+        .find(k => fileName === k + '.csv');
 
-          'utf8'
-        );
+      if (!key) {
+        return uploadError(res,
+          '"' + fileName + '" is not a recognised data file.\n',
+          'Ensure it fits the type (and naming) of one of: '
+          + Object.keys(DATASETS).map(k => k + '.csv').join(', '));
+      }
 
+      const spec = DATASETS[key];
 
-      db.exec(
-        refreshScript
-      );
+      // Parse
+      let rows;
+      try {
+        rows = parse(fs.readFileSync(filePath, 'utf8'), {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          bom: true
+        });
+            } catch (err) {
+        return uploadError(res,
+          'Could not read ' + path.basename(filePath) + ': ' + err.message,
+          '\nEvery row must have the same number of commas as the header row. '
+          + '\nIf a value contains a comma, wrap it in double quotes, like "Home, Garden"');
+      }
 
+      if (rows.length === 0) {
+        return uploadError(res,
+          'File is empty (contains no data rows).');
+      }
+
+      // Header check
+      const expected = Object.keys(spec.columns);
+      const actual = Object.keys(rows[0]);
+      const missing = expected.filter(c => !actual.includes(c));
+
+      if (missing.length > 0) {
+        return uploadError(res,
+          'Missing column(s): ' + missing.join(', '),
+          '\nExpected header: ' + expected.join(', '));
+      }
+
+      // Statement for upserting into this table
+      const dbCols = expected.map(c => spec.columns[c]);
+      const updates = dbCols
+        .filter(c => c !== spec.pk)
+        .map(c => `"${c}" = excluded."${c}"`)
+        .join(', ');
+
+      const insert = db.prepare(`
+        INSERT INTO "${spec.table}" (${dbCols.map(c => `"${c}"`).join(', ')})
+        VALUES (${dbCols.map(() => '?').join(', ')})
+        ON CONFLICT("${spec.pk}") DO UPDATE SET ${updates}
+      `);
+
+      // Parent lookups for foreign key checks
+      const parentChecks = spec.parents.map(p => ({
+        column: p.column,
+        table: p.table,
+        stmt: db.prepare(`SELECT 1 AS ok FROM "${p.table}" WHERE "${p.key}" = ?`)
+      }));
+
+      const rejected = [];
+      let inserted = 0;
+
+      const loadAll = db.transaction(() => {
+
+        rows.forEach((row, index) => {
+
+          const lineNumber = index + 2;   // +1 for header, +1 for 1-based
+
+          // empty row
+          if (expected.every(c => String(row[c] ?? '').trim() === '')) {
+            rejected.push({ line: lineNumber, reason: 'Row is empty' });
+            return;
+          }
+
+          // required fields
+          const blank = spec.required
+            .find(c => String(row[c] ?? '').trim() === '');
+
+          if (blank) {
+            rejected.push({ line: lineNumber, reason: 'Missing required field: ' + blank });
+            return;
+          }
+
+          // numeric fields must parse
+          const values = [];
+          let badNumber = null;
+
+          for (const csvCol of expected) {
+            const raw = row[csvCol];
+
+            if (spec.numeric.includes(csvCol)) {
+              const n = Number(raw);
+              if (raw === '' || raw === null || Number.isNaN(n)) {
+                badNumber = csvCol;
+                break;
+              }
+              values.push(n);
+            } else {
+              values.push(raw === '' ? null : raw);
+            }
+          }
+
+          if (badNumber) {
+            rejected.push({ line: lineNumber, reason: 'Not a number: ' + badNumber });
+            return;
+          }
+
+          // Date Fields must look like YYYY-MM-DD
+          const badDate = (spec.dates || [])
+            .find(c => !/^\d{4}-\d{2}-\d{2}$/.test(String(row[c] ?? '').trim()));
+
+          if (badDate) {
+            rejected.push({
+              line: lineNumber,
+              reason: 'Date must be YYYY-MM-DD: ' + badDate
+            });
+            return;
+          }
+
+          // foreign keys must exist
+          let missingParent = null;
+
+          for (const check of parentChecks) {
+            const value = Number(row[check.column]);
+            if (!check.stmt.get(value)) {
+              missingParent = `${check.column} ${value} not found in ${check.table}`;
+              break;
+            }
+          }
+
+          if (missingParent) {
+            rejected.push({ line: lineNumber, reason: missingParent });
+            return;
+          }
+
+          insert.run(...values);
+          inserted++;
+        });
+      });
+
+      loadAll();
+
+      if (rejected.length > 0) {
+        console.log('Rejected rows in ' + fileName + ':');
+        rejected.slice(0, 20).forEach(r => console.log('  line ' + r.line + ': ' + r.reason));
+      }
 
       res.json({
-
         success: true,
-
-        message:
-          'KPI cache successfully updated.'
+        dataset: key,
+        table: spec.table,
+        total_rows: rows.length,
+        loaded: inserted,
+        rejected: rejected.length,
+        // cap the detail so a badly broken file doesn't return 50,000 messages
+        rejected_detail: rejected.slice(0, 20)
       });
-
-
-    } catch (err) {
-
-      res.status(500).json({
-
-        success: false,
-
-        error:
-          err.message
-      });
-    }
-  }
+    })
 );
 
 

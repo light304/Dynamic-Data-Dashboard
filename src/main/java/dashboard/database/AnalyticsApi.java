@@ -18,8 +18,9 @@ public final class AnalyticsApi {
     public record Point(String label, double value) {}
     public record SeriesPoint(String label, String series, double value) {}
     public record XYPoint(String label, String category, double x, double y) {}
-    public record Kpis(double revenue, double growth, double profit, double margin,
-                       double turnover, double retention, double marketingRoi) {}
+    public record Kpis(double revenue, Double growth, double profit, double margin,
+                       double turnover, double retention, double costPerConversion,
+                       boolean profitIncludesMarketing, boolean turnoverRegionIgnored) {}
     public record TableData(String[] columns, List<Object[]> rows) {}
 
     public static Kpis overview(Map<String, String> filters) throws Exception {
@@ -27,12 +28,16 @@ public final class AnalyticsApi {
         Map<String, Object> data = asMap(root.get("data"));
         return new Kpis(
                 number(data.get("total_revenue")),
-                number(data.get("revenue_growth_pct")),
+                data.get("revenue_growth_pct") == null 
+                    ? null 
+                    : number(data.get("revenue_growth_pct")),
                 number(data.get("profit")),
                 number(data.get("profit_margin_pct")),
                 number(data.get("inventory_turnover")),
                 number(data.get("customer_retention_pct")),
-                number(data.get("marketing_roi_pct"))
+                number(data.get("cost_per_conversion")),
+                bool(data.get("profit_includes_marketing")),
+                bool(data.get("inventory_turnover_region_ignored"))
         );
     }
 
@@ -126,7 +131,42 @@ public final class AnalyticsApi {
         catch (NumberFormatException ex) { return 0.0; }
     }
 
+    private static boolean bool(Object value) {
+        if (value instanceof Boolean b) return b;
+        return value != null && Boolean.parseBoolean(String.valueOf(value));
+    }
+
     private static String text(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    public record UploadResult(boolean success, String error, String table, int totalRows, int loaded, int rejected, java.util.List<String> rejectedDetail) {}
+
+    public static UploadResult upload(String absolutePath) throws Exception {
+        String body = "{\"path\":\""
+            + absolutePath.replace("\\", "\\\\")
+            + "\"}";
+
+        Map<String, Object> root =
+            asMap(SchemaIntrospector.MiniJson.parse(
+                ApiClient.postJson("api/upload", body)));
+
+        boolean ok = Boolean.TRUE.equals(root.get("success"));
+
+        java.util.List<String> detail = new ArrayList<>();
+        for (Object item : asList(root.get("rejected_detail"))) {
+            Map<String, Object> r = asMap(item);
+            detail.add("Rejected Line " + (int) number(r.get("line")) + ": " + text(r.get("reason")));
+        }
+
+        return new UploadResult(
+            ok,
+            text(root.get("error")),
+            text(root.get("table")),
+            (int) number(root.get("total_rows")),
+            (int) number(root.get("loaded")),
+            (int) number(root.get("rejected")),
+            detail
+        );
     }
 }
