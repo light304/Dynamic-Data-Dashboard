@@ -13,7 +13,7 @@ import java.util.Map;
  * Main application window.
  *
  * The original dashboard structure is intentionally preserved:
- * - branding stays above the left sidebar
+ * - branding stays above the left sidebarc
  * - sidebar stays on the left
  * - page content stays in the centre
  *
@@ -139,7 +139,8 @@ public class DashboardFrame extends JFrame {
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
         content.add(reports, "Reports");
-        content.add(placeholder("Alerts", "The low-stock backend route can be connected here."), "Alerts");
+        AlertsPanel alerts = new AlertsPanel();
+content.add(alerts, "Alerts");
 
         // PERFORMANCE: load only the visible page at startup. Previously all six
         // pages refreshed together, which caused several API calls and made it slow.

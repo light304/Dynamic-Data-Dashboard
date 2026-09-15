@@ -1,3 +1,10 @@
+//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category, 
+// and view the detailed records behind that summary. Instead of only seeing aggregated values, 
+// users can inspect the individual sales transactions that contributed to the chart. 
+// The existing dashboard filters, such as year, period, 
+// and region, are carried into the drill-down so the displayed data remains relevant to the current view. 
+// Double-clicking is kept separate and is used to expand the chart, while a single click opens the detailed data table.
+
 package dashboard.gui;
 
 import java.awt.BorderLayout;
@@ -20,8 +27,11 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartMouseEvent;
+import org.jfree.chart.ChartMouseListener;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.entity.CategoryItemEntity;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
@@ -30,23 +40,6 @@ import dashboard.database.ApiClient;
 import dashboard.database.SchemaIntrospector;
 import dashboard.database.SchemaIntrospector.ComparisonRow;
 
-/*
- * This class creates the Revenue Trend graph.
- *
- * IMPORTANT:
- * There is NO sample data in this class.
- *
- * Revenue values are loaded from the real backend using:
- *
- * /api/query/compare
- *
- * The backend returns SUM(sales.revenue) grouped by sales.order_date.
- *
- * The Java GUI then groups those real database rows into:
- * - Monthly
- * - Quarterly
- * - Yearly
- */
 public class RevenueChartPanel extends JPanel {
 
     private static final Color ACTIVE_COLOR =
@@ -61,79 +54,70 @@ public class RevenueChartPanel extends JPanel {
     private static final Color BORDER_COLOR =
             new Color(226, 232, 240);
 
-    /*
-     * JFreeChart dataset.
-     */
     private DefaultCategoryDataset revenueDataset;
 
-    /*
-     * Status text underneath the graph.
-     */
     private JLabel statusLabel;
 
-    /*
-     * Current values received from the global Overview filter.
-     */
     private Integer selectedYear = 2023;
-    private String selectedScope = "Monthly";
-    private String selectedPeriod = "January";
-    private String selectedRegion = "All Regions";
 
-    /*
-     * Creates the chart.
-     */
+    private String selectedScope =
+            "Monthly";
+
+    private String selectedPeriod =
+            "January";
+
+    private String selectedRegion =
+            "All Regions";
+
+    private JFreeChart revenueChart;
+
     public RevenueChartPanel() {
 
         configurePanel();
+
         createChartLayout();
     }
 
-    /*
-     * Configures the outer chart card.
-     */
     private void configurePanel() {
 
         setLayout(
                 new BorderLayout(
                         0,
-                        10
+                        6
                 )
         );
 
-        setBackground(
-                Color.WHITE
-        );
+        setBackground(Color.WHITE);
 
         setPreferredSize(
                 new Dimension(
-                        600,
-                        350
+                        420,
+                        220
+                )
+        );
+
+        setMinimumSize(
+                new Dimension(
+                        280,
+                        200
                 )
         );
 
         setBorder(
                 BorderFactory.createCompoundBorder(
-
                         BorderFactory.createLineBorder(
                                 BORDER_COLOR
                         ),
-
                         new EmptyBorder(
-                                15,
-                                16,
+                                10,
                                 12,
-                                16
+                                8,
+                                12
                         )
                 )
         );
     }
 
-    /*
-     * Creates the chart and its title.
-     *
-     * The separate graph filters have been removed because the Overview
-     * page now has one global filter controlling everything.
-     */
     private void createChartLayout() {
 
         add(
@@ -144,7 +128,7 @@ public class RevenueChartPanel extends JPanel {
         revenueDataset =
                 new DefaultCategoryDataset();
 
-        JFreeChart revenueChart =
+        revenueChart =
                 ChartFactory.createBarChart(
                         null,
                         "Period",
@@ -157,26 +141,73 @@ public class RevenueChartPanel extends JPanel {
         );
 
         ChartPanel chartPanel =
-                new ChartPanel(
+                createChartPanel(
                         revenueChart
                 );
 
-        chartPanel.setBackground(
-                Color.WHITE
-        );
+        chartPanel.addChartMouseListener(
+                new ChartMouseListener() {
 
-        chartPanel.setBorder(
-                null
-        );
+                    @Override
+                    public void chartMouseMoved(
+                            ChartMouseEvent event
+                    ) {
+                    }
 
-        chartPanel.setMouseWheelEnabled(
-                false
+                    @Override
+                    public void chartMouseClicked(
+                            ChartMouseEvent event
+                    ) {
+
+                        /*
+                         * DOUBLE CLICK
+                         * Open expanded chart.
+                         */
+                        if (
+                                event.getTrigger() != null
+                                        && event
+                                        .getTrigger()
+                                        .getClickCount() >= 2
+                        ) {
+
+                            showExpandedChart();
+
+                            return;
+                        }
+
+                        /*
+                         * SINGLE CLICK
+                         * Drill down into selected bar.
+                         */
+                        if (
+                                event.getEntity()
+                                        instanceof CategoryItemEntity entity
+                        ) {
+
+                            String clickedPeriod =
+                                    entity
+                                            .getColumnKey()
+                                            .toString();
+
+                            openDrillDown(
+                                    clickedPeriod
+                            );
+                        }
+                    }
+                }
         );
 
         add(
                 chartPanel,
                 BorderLayout.CENTER
         );
+
+        JPanel bottom =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        bottom.setOpaque(false);
 
         statusLabel =
                 new JLabel(
@@ -187,7 +218,7 @@ public class RevenueChartPanel extends JPanel {
                 new Font(
                         "SansSerif",
                         Font.PLAIN,
-                        12
+                        10
                 )
         );
 
@@ -195,17 +226,225 @@ public class RevenueChartPanel extends JPanel {
                 SECONDARY_TEXT
         );
 
-        add(
+        JLabel hint =
+                new JLabel(
+                        "Click bar for details • Double-click to expand",
+                        SwingConstants.RIGHT
+                );
+
+        hint.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        9
+                )
+        );
+
+        hint.setForeground(
+                SECONDARY_TEXT
+        );
+
+        bottom.add(
                 statusLabel,
+                BorderLayout.WEST
+        );
+
+        bottom.add(
+                hint,
+                BorderLayout.EAST
+        );
+
+        add(
+                bottom,
                 BorderLayout.SOUTH
         );
     }
 
+    // =========================================================
+    // DRILL DOWN
+    // =========================================================
+    private void openDrillDown(
+        String clickedPeriod
+) {
+
+    String month = null;
+    String week = null;
+
+
     /*
-     * Creates the chart title.
+     * YEARLY
      *
-     * No chart-specific dropdowns are needed anymore.
+     * Chart bars are:
+     * JAN, FEB, MAR, etc.
+     *
+     * Clicking a month opens that month's sales.
      */
+    if (
+            "Yearly".equals(
+                    selectedScope
+            )
+    ) {
+
+        int monthNumber =
+                monthNumberFromShortName(
+                        clickedPeriod
+                );
+
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
+    }
+
+
+    /*
+     * QUARTERLY
+     *
+     * Chart bars are the three months
+     * inside the selected quarter.
+     *
+     * Example:
+     * Q1 -> JAN, FEB, MAR
+     */
+    else if (
+            "Quarterly".equals(
+                    selectedScope
+            )
+    ) {
+
+        int monthNumber =
+                monthNumberFromShortName(
+                        clickedPeriod
+                );
+
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
+    }
+
+
+    /*
+     * MONTHLY
+     *
+     * Chart bars are:
+     * Week 1
+     * Week 2
+     * Week 3
+     * Week 4
+     * Week 5
+     *
+     * We send BOTH:
+     *
+     * month = 2023-01
+     * week  = Week 2
+     *
+     * so the backend returns only the
+     * transactions from that exact week.
+     */
+    else if (
+            "Monthly".equals(
+                    selectedScope
+            )
+    ) {
+
+        int monthNumber =
+                monthNumber(
+                        selectedPeriod
+                );
+
+        month =
+                String.format(
+                        "%04d-%02d",
+                        selectedYear,
+                        monthNumber
+                );
+
+        week =
+                clickedPeriod;
+    }
+
+
+    /*
+     * Open the sales transaction table.
+     *
+     * New signature:
+     *
+     * parent
+     * month
+     * week
+     * category
+     * region
+     */
+    DrilldownDialog.showSales(
+            this,
+            month,
+            week,
+            null,
+            selectedRegion
+    );
+}
+
+    private int monthNumberFromShortName(
+            String month
+    ) {
+
+        return switch (
+                month.toUpperCase()
+        ) {
+
+            case "JAN" -> 1;
+            case "FEB" -> 2;
+            case "MAR" -> 3;
+            case "APR" -> 4;
+            case "MAY" -> 5;
+            case "JUN" -> 6;
+            case "JUL" -> 7;
+            case "AUG" -> 8;
+            case "SEP" -> 9;
+            case "OCT" -> 10;
+            case "NOV" -> 11;
+            case "DEC" -> 12;
+
+            default -> 1;
+        };
+    }
+
+    private ChartPanel createChartPanel(
+            JFreeChart chart
+    ) {
+
+        ChartPanel panel =
+                new ChartPanel(chart);
+
+        panel.setBackground(
+                Color.WHITE
+        );
+
+        panel.setBorder(null);
+
+        panel.setMouseWheelEnabled(
+                false
+        );
+
+        panel.setMinimumDrawWidth(0);
+        panel.setMinimumDrawHeight(0);
+
+        panel.setMaximumDrawWidth(
+                Integer.MAX_VALUE
+        );
+
+        panel.setMaximumDrawHeight(
+                Integer.MAX_VALUE
+        );
+
+        return panel;
+    }
+
     private JPanel createHeader() {
 
         JPanel header =
@@ -231,7 +470,7 @@ public class RevenueChartPanel extends JPanel {
                 new Font(
                         "SansSerif",
                         Font.BOLD,
-                        17
+                        15
                 )
         );
 
@@ -252,7 +491,7 @@ public class RevenueChartPanel extends JPanel {
                 new Font(
                         "SansSerif",
                         Font.PLAIN,
-                        12
+                        10
                 )
         );
 
@@ -269,9 +508,7 @@ public class RevenueChartPanel extends JPanel {
         );
 
         header.add(
-                Box.createVerticalStrut(
-                        2
-                )
+                Box.createVerticalStrut(1)
         );
 
         header.add(
@@ -281,9 +518,176 @@ public class RevenueChartPanel extends JPanel {
         return header;
     }
 
-    /*
-     * Called by OverviewPanel whenever Apply Filters is clicked.
-     */
+    // =========================================================
+    // EXPANDED CHART
+    // =========================================================
+
+    private void showExpandedChart() {
+
+        if (revenueChart == null) {
+            return;
+        }
+
+        JDialog dialog =
+                new JDialog();
+
+        dialog.setTitle(
+                "Revenue Trend"
+        );
+
+        dialog.setModal(false);
+
+        dialog.setDefaultCloseOperation(
+                WindowConstants.DISPOSE_ON_CLOSE
+        );
+
+        dialog.setLayout(
+                new BorderLayout()
+        );
+
+        JPanel header =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        header.setBackground(
+                Color.WHITE
+        );
+
+        header.setBorder(
+                new EmptyBorder(
+                        14,
+                        20,
+                        14,
+                        20
+                )
+        );
+
+        JLabel title =
+                new JLabel(
+                        "Revenue Trend"
+                );
+
+        title.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        20
+                )
+        );
+
+        title.setForeground(
+                PRIMARY_TEXT
+        );
+
+        JButton close =
+                new JButton(
+                        "Close"
+                );
+
+        close.setForeground(
+                Color.WHITE
+        );
+
+        close.setBackground(
+                ACTIVE_COLOR
+        );
+
+        close.setFocusPainted(
+                false
+        );
+
+        close.setBorderPainted(
+                false
+        );
+
+        close.addActionListener(
+                e -> dialog.dispose()
+        );
+
+        header.add(
+                title,
+                BorderLayout.WEST
+        );
+
+        header.add(
+                close,
+                BorderLayout.EAST
+        );
+
+        ChartPanel expanded =
+                createChartPanel(
+                        revenueChart
+                );
+
+        expanded.setMouseWheelEnabled(
+                true
+        );
+
+        JPanel wrapper =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        wrapper.setBackground(
+                new Color(
+                        245,
+                        247,
+                        250
+                )
+        );
+
+        wrapper.setBorder(
+                new EmptyBorder(
+                        18,
+                        18,
+                        18,
+                        18
+                )
+        );
+
+        wrapper.add(
+                expanded,
+                BorderLayout.CENTER
+        );
+
+        dialog.add(
+                header,
+                BorderLayout.NORTH
+        );
+
+        dialog.add(
+                wrapper,
+                BorderLayout.CENTER
+        );
+
+        Dimension screen =
+                Toolkit
+                        .getDefaultToolkit()
+                        .getScreenSize();
+
+        dialog.setSize(
+                Math.min(
+                        1250,
+                        screen.width - 80
+                ),
+                Math.min(
+                        850,
+                        screen.height - 80
+                )
+        );
+
+        dialog.setLocationRelativeTo(
+                this
+        );
+
+        dialog.setVisible(true);
+    }
+
+    // =========================================================
+    // FILTERS
+    // =========================================================
+
     public void applyFilters(
             Integer year,
             String scope,
@@ -291,10 +695,12 @@ public class RevenueChartPanel extends JPanel {
             String region
     ) {
 
-        if (year == null
-                || scope == null
-                || period == null
-                || region == null) {
+        if (
+                year == null
+                        || scope == null
+                        || period == null
+                        || region == null
+        ) {
 
             return;
         }
@@ -311,29 +717,19 @@ public class RevenueChartPanel extends JPanel {
         selectedRegion =
                 region;
 
-        /*
-         * Now query the REAL database.
-         */
         refreshChart();
     }
 
-    /*
-     * Reloads real revenue information from the backend.
-     */
+    // =========================================================
+    // DATA
+    // =========================================================
+
     public void refreshChart() {
         
         if (revenueDataset == null) return;
         try {
             statusLabel.setText("Loading revenue data...");
 
-            /*
-             * Ask the real backend to calculate:
-             *
-             * SUM(revenue)
-             * GROUP BY order_date
-             *
-             * from the SALES table.
-             */
             String json =
                     ApiClient.getData(
                             "api/query/compare",
@@ -360,9 +756,6 @@ public class RevenueChartPanel extends JPanel {
                             json
                     );
 
-            /*
-             * Build the JFreeChart using only real rows.
-             */
             loadDatabaseRevenue(
                     rows
             );
@@ -379,59 +772,45 @@ public class RevenueChartPanel extends JPanel {
         }
     }
 
-    /*
-     * Converts real daily database revenue rows into the selected
-     * dashboard time scope.
-     */
     private void loadDatabaseRevenue(
             List<ComparisonRow> rows
     ) {
 
         revenueDataset.clear();
 
-        /*
-         * This keeps the chart buckets in the correct order.
-         */
         Map<String, Double> totals =
                 new LinkedHashMap<>();
 
-        /*
-         * Create the required buckets before reading the data.
-         */
         createEmptyBuckets(
                 totals
         );
 
-        DateTimeFormatter databaseDateFormat =
+        DateTimeFormatter format =
                 DateTimeFormatter.ofPattern(
                         "yyyy-MM-dd"
                 );
 
-        /*
-         * Read every real revenue row returned by SQLite.
-         */
-        for (ComparisonRow row : rows) {
+        for (
+                ComparisonRow row
+                : rows
+        ) {
 
             try {
 
                 LocalDate orderDate =
                         LocalDate.parse(
                                 row.label,
-                                databaseDateFormat
+                                format
                         );
 
-                /*
-                 * Only use rows from the selected year.
-                 */
-                if (orderDate.getYear()
-                        != selectedYear) {
+                if (
+                        orderDate.getYear()
+                                != selectedYear
+                ) {
 
                     continue;
                 }
 
-                /*
-                 * Work out which chart bucket this database row belongs to.
-                 */
                 String bucket =
                         getBucketForDate(
                                 orderDate
@@ -450,11 +829,8 @@ public class RevenueChartPanel extends JPanel {
                                 + row.value
                 );
 
-            } catch (Exception dateException) {
+            } catch (Exception ex) {
 
-                /*
-                 * Ignore rows whose date is invalid.
-                 */
                 System.err.println(
                         "Unable to parse order date: "
                                 + row.label
@@ -462,9 +838,6 @@ public class RevenueChartPanel extends JPanel {
             }
         }
 
-        /*
-         * Put the real aggregated values into JFreeChart.
-         */
         for (
                 Map.Entry<String, Double> entry
                 : totals.entrySet()
@@ -482,9 +855,6 @@ public class RevenueChartPanel extends JPanel {
         );
     }
 
-    /*
-     * Creates empty chart buckets depending on the selected scope.
-     */
     private void createEmptyBuckets(
             Map<String, Double> totals
     ) {
@@ -493,42 +863,15 @@ public class RevenueChartPanel extends JPanel {
 
             case "Monthly" -> {
 
-                /*
-                 * The global Period filter selects a specific month.
-                 *
-                 * Show the weeks inside that month.
-                 */
-                totals.put(
-                        "Week 1",
-                        0.0
-                );
-
-                totals.put(
-                        "Week 2",
-                        0.0
-                );
-
-                totals.put(
-                        "Week 3",
-                        0.0
-                );
-
-                totals.put(
-                        "Week 4",
-                        0.0
-                );
-
-                totals.put(
-                        "Week 5",
-                        0.0
-                );
+                totals.put("Week 1", 0.0);
+                totals.put("Week 2", 0.0);
+                totals.put("Week 3", 0.0);
+                totals.put("Week 4", 0.0);
+                totals.put("Week 5", 0.0);
             }
 
             case "Quarterly" -> {
 
-                /*
-                 * The selected quarter is split into its three months.
-                 */
                 int quarter =
                         quarterNumber(
                                 selectedPeriod
@@ -544,9 +887,7 @@ public class RevenueChartPanel extends JPanel {
                 ) {
 
                     totals.put(
-                            monthName(
-                                    month
-                            ),
+                            monthName(month),
                             0.0
                     );
                 }
@@ -554,9 +895,6 @@ public class RevenueChartPanel extends JPanel {
 
             case "Yearly" -> {
 
-                /*
-                 * Full year shows every month.
-                 */
                 for (
                         int month = 1;
                         month <= 12;
@@ -564,24 +902,20 @@ public class RevenueChartPanel extends JPanel {
                 ) {
 
                     totals.put(
-                            monthName(
-                                    month
-                            ),
+                            monthName(month),
                             0.0
                     );
                 }
             }
 
-            default -> throw new IllegalArgumentException(
-                    "Unknown scope: "
-                            + selectedScope
-            );
+            default ->
+                    throw new IllegalArgumentException(
+                            "Unknown scope: "
+                                    + selectedScope
+                    );
         }
     }
 
-    /*
-     * Works out which bucket a database date belongs in.
-     */
     private String getBucketForDate(
             LocalDate date
     ) {
@@ -590,26 +924,24 @@ public class RevenueChartPanel extends JPanel {
 
             case "Monthly" -> {
 
-                int selectedMonth =
+                int selectedMonthNumber =
                         monthNumber(
                                 selectedPeriod
                         );
 
-                if (date.getMonthValue()
-                        != selectedMonth) {
+                if (
+                        date.getMonthValue()
+                                != selectedMonthNumber
+                ) {
 
                     return null;
                 }
 
-                int day =
-                        date.getDayOfMonth();
-
                 int week =
-                        ((day - 1) / 7) + 1;
+                        ((date.getDayOfMonth() - 1)
+                                / 7)
+                                + 1;
 
-                /*
-                 * Prevent anything beyond Week 5.
-                 */
                 week =
                         Math.min(
                                 week,
@@ -632,8 +964,10 @@ public class RevenueChartPanel extends JPanel {
                                 / 3)
                                 + 1;
 
-                if (dateQuarter
-                        != selectedQuarter) {
+                if (
+                        dateQuarter
+                                != selectedQuarter
+                ) {
 
                     return null;
                 }
@@ -643,23 +977,22 @@ public class RevenueChartPanel extends JPanel {
                 );
             }
 
-            case "Yearly" -> {
+            case "Yearly" ->
+                    {
 
-                return monthName(
-                        date.getMonthValue()
-                );
-            }
+                        return monthName(
+                                date.getMonthValue()
+                        );
+                    }
 
-            default -> {
+            default ->
+                    {
 
-                return null;
-            }
+                        return null;
+                    }
         }
     }
 
-    /*
-     * Converts January -> 1, February -> 2, etc.
-     */
     private int monthNumber(
             String month
     ) {
@@ -683,9 +1016,6 @@ public class RevenueChartPanel extends JPanel {
         };
     }
 
-    /*
-     * Converts month number into short month label.
-     */
     private String monthName(
             int month
     ) {
@@ -702,9 +1032,6 @@ public class RevenueChartPanel extends JPanel {
                 );
     }
 
-    /*
-     * Converts Q1/Q2/Q3/Q4 into an integer.
-     */
     private int quarterNumber(
             String quarter
     ) {
@@ -720,15 +1047,11 @@ public class RevenueChartPanel extends JPanel {
         };
     }
 
-    /*
-     * Updates the message under the chart.
-     */
     private void updateStatus(
             Map<String, Double> totals
     ) {
 
-        double total =
-                0.0;
+        double total = 0.0;
 
         for (
                 double value
@@ -738,63 +1061,43 @@ public class RevenueChartPanel extends JPanel {
             total += value;
         }
 
-        String filterDescription;
+        String description;
 
         switch (selectedScope) {
 
             case "Monthly" ->
-                    filterDescription =
+                    description =
                             selectedPeriod
                                     + " "
                                     + selectedYear;
 
             case "Quarterly" ->
-                    filterDescription =
+                    description =
                             selectedPeriod
                                     + " "
                                     + selectedYear;
 
             case "Yearly" ->
-                    filterDescription =
+                    description =
                             "Full Year "
                                     + selectedYear;
 
             default ->
-                    filterDescription =
+                    description =
                             String.valueOf(
                                     selectedYear
                             );
         }
 
-        /*
-         * Region is currently shown in the filter description,
-         * but the existing compare API does not support combining
-         * order_date + region in one request yet.
-         */
-        if (!"All Regions".equals(
-                selectedRegion
-        )) {
-
-            statusLabel.setText(
-                    filterDescription
-                            + " | Region filtering requires backend support"
-            );
-
-        } else {
-
-            statusLabel.setText(
-                    String.format(
-                            "%s | Total Revenue: $%,.2f",
-                            filterDescription,
-                            total
-                    )
-            );
-        }
+        statusLabel.setText(
+                String.format(
+                        "%s | $%,.0f",
+                        description,
+                        total
+                )
+        );
     }
 
-    /*
-     * Styling for the JFreeChart.
-     */
     private void styleChart(
             JFreeChart chart
     ) {
@@ -826,6 +1129,24 @@ public class RevenueChartPanel extends JPanel {
                 false
         );
 
+        plot.getDomainAxis()
+                .setTickLabelFont(
+                        new Font(
+                                "SansSerif",
+                                Font.PLAIN,
+                                9
+                        )
+                );
+
+        plot.getRangeAxis()
+                .setTickLabelFont(
+                        new Font(
+                                "SansSerif",
+                                Font.PLAIN,
+                                9
+                        )
+                );
+
         BarRenderer renderer =
                 (BarRenderer)
                         plot.getRenderer();
@@ -836,7 +1157,7 @@ public class RevenueChartPanel extends JPanel {
         );
 
         renderer.setMaximumBarWidth(
-                0.09
+                0.08
         );
 
         renderer.setShadowVisible(
