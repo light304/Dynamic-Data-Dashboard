@@ -29,6 +29,12 @@ public final class AnalyticsApi {
             double x,
             double y
     ) {}
+    public record LowStockAlert(
+        int productId,
+        String category,
+        String warehouse,
+        int stockLevel
+) {}
 
     public record Kpis(
             double revenue,
@@ -872,5 +878,38 @@ private static TableData readTableData(
             columns,
             rows
     );
+}
+
+/**
+ * Returns all products currently flagged by the backend
+ * as having low stock levels.
+ */
+public static List<LowStockAlert> lowStockAlerts() throws Exception {
+
+    Map<String, Object> root =
+            getObject(
+                    "api/alerts/low-stock",
+                    Map.of()
+            );
+
+    List<LowStockAlert> alerts =
+            new ArrayList<>();
+
+    for (Object item : asList(root.get("data"))) {
+
+        Map<String, Object> row =
+                asMap(item);
+
+        alerts.add(
+                new LowStockAlert(
+                        ((Number) row.get("product_id")).intValue(),
+                        text(row.get("category")),
+                        text(row.get("warehouse")),
+                        ((Number) row.get("stock_level")).intValue()
+                )
+        );
+    }
+
+    return alerts;
 }
 }
