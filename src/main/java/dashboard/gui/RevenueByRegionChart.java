@@ -19,7 +19,10 @@ import java.awt.*;
 import java.text.NumberFormat;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RevenueByRegionChart extends JPanel {
 
@@ -38,6 +41,11 @@ public class RevenueByRegionChart extends JPanel {
     private DefaultCategoryDataset dataset;
 
     private JLabel statusLabel;
+
+    // Bumped on every applyFilters() call so a slow response from an
+    // earlier filter selection can't overwrite a newer one that already
+    // came back (SwingWorkers can complete out of order).
+    private final AtomicInteger requestGeneration = new AtomicInteger(0);
 
     public RevenueByRegionChart() {
 
@@ -271,57 +279,77 @@ public class RevenueByRegionChart extends JPanel {
             String period
     ) {
 
-        try {
-            java.util.Map<String, String> params =
-                    new java.util.LinkedHashMap<>();
+        final int myGeneration = requestGeneration.incrementAndGet();
 
-            params.put("year", String.valueOf(selectedYear));
-            params.put("scope", scope);
-            params.put("period", period);
+        statusLabel.setText("Loading regional revenue...");
 
-            if (selectedMonth != null) {
-                params.put("month", selectedMonth);
+        new SwingWorker<List<ComparisonRow>, Void>() {
+
+            @Override
+            protected List<ComparisonRow> doInBackground() throws Exception {
+
+                Map<String, String> params = new LinkedHashMap<>();
+
+                params.put("year", String.valueOf(selectedYear));
+                params.put("scope", scope);
+                params.put("period", period);
+
+                if (selectedMonth != null) {
+                    params.put("month", selectedMonth);
+                }
+
+                String json =
+                        ApiClient.getData(
+                                "api/sales/revenue-region",
+                                params
+                        );
+
+                return SchemaIntrospector.parseCompareRows(json);
             }
 
-            String json =
-                    ApiClient.getData(
-                            "api/sales/revenue-region",
-                            params
+            @Override
+            protected void done() {
+
+                // A newer applyFilters() call has already started - this
+                // response is stale (SwingWorkers can finish out of order),
+                // so don't let it overwrite the newer requests result.
+                if (myGeneration != requestGeneration.get()) return;
+
+                try {
+                    List<ComparisonRow> rows = get();
+
+                    dataset.clear();
+
+                    for (ComparisonRow row : rows) {
+                        dataset.addValue(
+                                row.value,
+                                "Revenue",
+                                row.label
+                        );
+                    }
+
+                    if ("Weekly".equals(scope)) {
+                        statusLabel.setText(
+                                selectedYear + " • " + selectedMonth + " • " + period
+                                        + " • Live filtered regional revenue"
+                        );
+                    } else {
+                        statusLabel.setText(
+                                selectedYear + " • " + scope + " • " + period
+                                        + " • Live filtered regional revenue"
+                        );
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    dataset.clear();
+                    statusLabel.setText(
+                            "Unable to load regional revenue"
                     );
-
-            List<ComparisonRow> rows =
-                    SchemaIntrospector
-                            .parseCompareRows(json);
-
-            dataset.clear();
-
-            for (ComparisonRow row : rows) {
-                dataset.addValue(
-                        row.value,
-                        "Revenue",
-                        row.label
-                );
+                }
             }
 
-            if ("Weekly".equals(scope)) {
-                statusLabel.setText(
-                        selectedYear + " • " + selectedMonth + " • " + period
-                                + " • Live filtered regional revenue"
-                );
-            } else {
-                statusLabel.setText(
-                        selectedYear + " • " + scope + " • " + period
-                                + " • Live filtered regional revenue"
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            dataset.clear();
-            statusLabel.setText(
-                    "Unable to load regional revenue"
-            );
-        }
+        }.execute();
     }
     /** Receives the dashboard-wide filter and reuses the existing chart filter logic. */
     public void applyFilter(DashboardFilter filter) {
