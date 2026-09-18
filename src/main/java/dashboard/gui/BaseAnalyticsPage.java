@@ -3,6 +3,8 @@ package dashboard.gui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -282,6 +284,39 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
     private static class ResponsiveGridPanel
             extends JPanel
             implements Scrollable {
+
+        // The time to wait after a resize event before revalidating the layout.
+         
+        private static final int RESIZE_SETTLE_MS = 10;
+
+        private volatile boolean settled = true;
+
+        private final Timer settleTimer;
+
+        ResponsiveGridPanel() {
+
+            settleTimer = new Timer(RESIZE_SETTLE_MS, e -> {
+                settled = true;
+                revalidate();
+                repaint();
+            });
+
+            settleTimer.setRepeats(false);
+
+            addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    settled = false;
+                    settleTimer.restart();
+                }
+            });
+        }
+
+        @Override
+        public void doLayout() {
+            if (!settled) return;
+            super.doLayout();
+        }
 
         @Override
         public Dimension getPreferredScrollableViewportSize() {
