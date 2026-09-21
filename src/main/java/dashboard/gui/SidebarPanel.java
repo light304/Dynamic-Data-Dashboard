@@ -13,13 +13,14 @@ public class SidebarPanel extends JPanel {
     private final Consumer<String> pageChangeHandler;
     private final Map<String,JButton> buttons = new LinkedHashMap<>();
 
-    public SidebarPanel(Consumer<String> pageChangeHandler) {
+    public SidebarPanel(Consumer<String> pageChangeHandler, Runnable onUpload) {
         this.pageChangeHandler = pageChangeHandler;
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(210,0));
         setBackground(SIDEBAR);
         setBorder(new EmptyBorder(25,18,25,18));
 
+        // Nav Bar (Pages)
         JPanel nav = new JPanel();
         nav.setLayout(new BoxLayout(nav,BoxLayout.Y_AXIS));
         nav.setBackground(SIDEBAR);
@@ -28,6 +29,24 @@ public class SidebarPanel extends JPanel {
             addButton(nav,page,"Overview".equals(page));
         }
         add(nav,BorderLayout.NORTH);
+
+        // Upload CSV Button
+        JButton upload = new JButton("Upload Data (CSV)");
+        upload.setFocusPainted(false);
+        upload.setBorderPainted(false);
+        upload.setOpaque(true);
+        upload.setBackground(new Color(30, 41, 59));
+        upload.setForeground(Color.WHITE);
+        upload.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        upload.setPreferredSize(new Dimension(174, 38));
+        upload.setToolTipText("Load products, customers, marketing, inventory or sales data from a CSV file");
+        upload.addActionListener(e -> onUpload.run());
+
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setBackground(SIDEBAR);
+        bottom.add(upload, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
+
     }
 
     private void addButton(JPanel nav,String page,boolean active) {

@@ -6,66 +6,478 @@ import dashboard.database.SchemaIntrospector.TableMeta;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-/** Overview page. Filtering is controlled by the shared GlobalFilterPanel. */
-public class OverviewPanel extends JPanel implements FilterableDashboardPage {
+public class OverviewPanel extends JPanel
+        implements FilterableDashboardPage {
 
-    private static final Color BACKGROUND = new Color(245, 247, 250);
-    private static final Color PRIMARY = new Color(31, 41, 55);
+    private static final Color BACKGROUND =
+            new Color(245, 247, 250);
 
-    private final KpiPanel kpiPanel = new KpiPanel();
-    private final RevenueChartPanel revenueChartPanel = new RevenueChartPanel();
-    private DashboardFilter currentFilter = DashboardFilter.defaults();
+    private static final Color PRIMARY =
+            new Color(31, 41, 55);
 
-    public OverviewPanel(Map<String, TableMeta> schema) {
-        setLayout(new BorderLayout(0, 15));
+    private static final Color SECONDARY =
+            new Color(100, 116, 139);
+
+    private static final Color ACCENT =
+            new Color(0, 188, 225);
+
+    private final KpiPanel kpiPanel =
+            new KpiPanel();
+
+    private final RevenueChartPanel revenueChartPanel =
+            new RevenueChartPanel();
+
+    private final JPanel chartsGrid =
+            new JPanel();
+
+    private final JButton refreshButton =
+            new JButton("Refresh");
+
+    private DashboardFilter currentFilter =
+            DashboardFilter.defaults();
+
+
+    public OverviewPanel(
+            Map<String, TableMeta> schema
+    ) {
+
+        setLayout(
+                new BorderLayout(
+                        0,
+                        14
+                )
+        );
+
         setBackground(BACKGROUND);
-        setBorder(new EmptyBorder(20, 25, 25, 25));
+
+        setBorder(
+                new EmptyBorder(
+                        18,
+                        25,
+                        20,
+                        25
+                )
+        );
+
         createLayout();
     }
 
+
+    // =========================================================
+    // MAIN LAYOUT
+    // =========================================================
+
     private void createLayout() {
-        JPanel top = new JPanel(new BorderLayout(0, 12));
-        top.setBackground(BACKGROUND);
 
-        JPanel heading = new JPanel();
-        heading.setOpaque(false);
-        heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+        add(
+                createHeader(),
+                BorderLayout.NORTH
+        );
 
-        JLabel title = new JLabel("Overview");
-        title.setFont(new Font("SansSerif", Font.BOLD, 28));
-        title.setForeground(PRIMARY);
 
-        JLabel subtitle = new JLabel("KPIs update from the dashboard-wide filter above");
-        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        subtitle.setForeground(new Color(100, 116, 139));
+        JPanel content =
+                new JPanel();
 
-        heading.add(title);
-        heading.add(Box.createVerticalStrut(4));
-        heading.add(subtitle);
+        content.setLayout(
+                new BoxLayout(
+                        content,
+                        BoxLayout.Y_AXIS
+                )
+        );
 
-        top.add(heading, BorderLayout.NORTH);
-        top.add(kpiPanel, BorderLayout.CENTER);
-        add(top, BorderLayout.NORTH);
+        content.setBackground(BACKGROUND);
 
-        JPanel body = new JPanel(new BorderLayout());
-        body.setBackground(BACKGROUND);
-        body.add(revenueChartPanel, BorderLayout.CENTER);
-        add(body, BorderLayout.CENTER);
+
+        // =====================================================
+        // KPI CARDS
+        // =====================================================
+
+        kpiPanel.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
+        content.add(kpiPanel);
+
+        content.add(
+                Box.createVerticalStrut(14)
+        );
+
+
+        // =====================================================
+        // ANALYTICS HEADER
+        // =====================================================
+
+        JPanel analyticsHeader =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        analyticsHeader.setOpaque(false);
+
+        analyticsHeader.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
+        analyticsHeader.setMaximumSize(
+                new Dimension(
+                        Integer.MAX_VALUE,
+                        42
+                )
+        );
+
+
+        JPanel textArea =
+                new JPanel();
+
+        textArea.setOpaque(false);
+
+        textArea.setLayout(
+                new BoxLayout(
+                        textArea,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+
+        JLabel analyticsTitle =
+                new JLabel(
+                        "Dashboard Analytics"
+                );
+
+        analyticsTitle.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        18
+                )
+        );
+
+        analyticsTitle.setForeground(PRIMARY);
+
+
+        JLabel analyticsSubtitle =
+                new JLabel(
+                        "Key sales, inventory and marketing performance"
+                );
+
+        analyticsSubtitle.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        11
+                )
+        );
+
+        analyticsSubtitle.setForeground(
+                SECONDARY
+        );
+
+
+        textArea.add(analyticsTitle);
+
+        textArea.add(
+                Box.createVerticalStrut(2)
+        );
+
+        textArea.add(analyticsSubtitle);
+
+
+        analyticsHeader.add(
+                textArea,
+                BorderLayout.WEST
+        );
+
+
+        content.add(analyticsHeader);
+
+        content.add(
+                Box.createVerticalStrut(8)
+        );
+
+
+        // =====================================================
+        // CHART GRID
+        // =====================================================
+
+        chartsGrid.setLayout(
+                new GridLayout(
+                        0,
+                        2,
+                        16,
+                        16
+                )
+        );
+
+        chartsGrid.setBackground(
+                BACKGROUND
+        );
+
+        chartsGrid.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
+
+        chartsGrid.add(
+                revenueChartPanel
+        );
+
+        chartsGrid.add(
+                AnalyticsCharts.messageCard(
+                        "Loading",
+                        "Waiting for dashboard data..."
+                )
+        );
+
+
+        content.add(chartsGrid);
+
+        content.add(
+                Box.createVerticalStrut(10)
+        );
+
+
+        // =====================================================
+        // SCROLLING
+        // =====================================================
+
+        JPanel scrollContainer =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        scrollContainer.setBackground(
+                BACKGROUND
+        );
+
+        scrollContainer.add(
+                content,
+                BorderLayout.NORTH
+        );
+
+
+        JScrollPane scrollPane =
+                new JScrollPane(
+                        scrollContainer
+                );
+
+        scrollPane.setBorder(null);
+
+        scrollPane.setHorizontalScrollBarPolicy(
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        );
+
+        scrollPane.setVerticalScrollBarPolicy(
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+        );
+
+        scrollPane
+                .getVerticalScrollBar()
+                .setUnitIncrement(18);
+
+        scrollPane
+                .getViewport()
+                .setBackground(BACKGROUND);
+
+
+        add(
+                scrollPane,
+                BorderLayout.CENTER
+        );
     }
 
-    /** Refreshes both the KPI cards and overview revenue chart from one filter. */
-    @Override
-    public void applyFilter(DashboardFilter filter) {
-        currentFilter = filter == null ? DashboardFilter.defaults() : filter;
 
-        try {
-            kpiPanel.update(AnalyticsApi.overview(currentFilter.toParams()));
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            kpiPanel.showError();
-        }
+    // =========================================================
+    // HEADER
+    // =========================================================
+
+    private JPanel createHeader() {
+
+        JPanel header =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        header.setOpaque(false);
+
+        header.setBorder(
+                new EmptyBorder(
+                        0,
+                        0,
+                        4,
+                        0
+                )
+        );
+
+
+        JPanel heading =
+                new JPanel();
+
+        heading.setOpaque(false);
+
+        heading.setLayout(
+                new BoxLayout(
+                        heading,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+
+        JLabel title =
+                new JLabel(
+                        "Overview"
+                );
+
+        title.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        28
+                )
+        );
+
+        title.setForeground(PRIMARY);
+
+
+        JLabel subtitle =
+                new JLabel(
+                        "Business performance overview using the dashboard-wide filters"
+                );
+
+        subtitle.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        13
+                )
+        );
+
+        subtitle.setForeground(
+                SECONDARY
+        );
+
+
+        heading.add(title);
+
+        heading.add(
+                Box.createVerticalStrut(3)
+        );
+
+        heading.add(subtitle);
+
+
+        // =====================================================
+        // REFRESH BUTTON
+        // =====================================================
+
+        refreshButton.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        13
+                )
+        );
+
+        refreshButton.setForeground(
+                Color.WHITE
+        );
+
+        refreshButton.setBackground(
+                ACCENT
+        );
+
+        refreshButton.setOpaque(true);
+
+        refreshButton.setContentAreaFilled(
+                true
+        );
+
+        refreshButton.setBorderPainted(
+                false
+        );
+
+        refreshButton.setFocusPainted(
+                false
+        );
+
+        refreshButton.setCursor(
+                Cursor.getPredefinedCursor(
+                        Cursor.HAND_CURSOR
+                )
+        );
+
+        refreshButton.setPreferredSize(
+                new Dimension(
+                        115,
+                        38
+                )
+        );
+
+        refreshButton.addActionListener(
+                e -> refreshEverything()
+        );
+
+
+        JPanel refreshArea =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.RIGHT,
+                                0,
+                                0
+                        )
+                );
+
+        refreshArea.setOpaque(false);
+
+        refreshArea.add(
+                refreshButton
+        );
+
+
+        header.add(
+                heading,
+                BorderLayout.WEST
+        );
+
+        header.add(
+                refreshArea,
+                BorderLayout.EAST
+        );
+
+
+        return header;
+    }
+
+
+    // =========================================================
+    // FILTER
+    // =========================================================
+
+    @Override
+    public void applyFilter(
+            DashboardFilter filter
+    ) {
+
+        currentFilter =
+                filter == null
+                        ? DashboardFilter.defaults()
+                        : filter;
+
+        refreshEverything();
+    }
+
+
+    // =========================================================
+    // REFRESH
+    // =========================================================
+
+    private void refreshEverything() {
+
+        refreshKpis();
+
 
         revenueChartPanel.applyFilters(
                 currentFilter.year(),
@@ -73,5 +485,280 @@ public class OverviewPanel extends JPanel implements FilterableDashboardPage {
                 currentFilter.period(),
                 currentFilter.region()
         );
+
+
+        refreshOverviewCharts();
+    }
+
+
+    // =========================================================
+    // KPI DATA
+    // =========================================================
+
+    private void refreshKpis() {
+
+        new SwingWorker<
+                AnalyticsApi.Kpis,
+                Void
+                >() {
+
+            @Override
+            protected AnalyticsApi.Kpis doInBackground()
+                    throws Exception {
+
+                return AnalyticsApi.overview(
+                        currentFilter.toParams()
+                );
+            }
+
+
+            @Override
+            protected void done() {
+
+                try {
+
+                    kpiPanel.update(
+                            get()
+                    );
+
+                } catch (Exception ex) {
+
+                    ex.printStackTrace();
+
+                    kpiPanel.showError();
+                }
+            }
+
+        }.execute();
+    }
+
+
+    // =========================================================
+    // CHART DATA
+    // =========================================================
+
+    private void refreshOverviewCharts() {
+
+        refreshButton.setEnabled(false);
+
+        refreshButton.setText(
+                "Loading..."
+        );
+
+
+        chartsGrid.removeAll();
+
+        chartsGrid.add(
+                revenueChartPanel
+        );
+
+        chartsGrid.add(
+                AnalyticsCharts.messageCard(
+                        "Loading",
+                        "Fetching dashboard analytics..."
+                )
+        );
+
+
+        chartsGrid.revalidate();
+        chartsGrid.repaint();
+
+
+        new SwingWorker<
+                List<JPanel>,
+                Void
+                >() {
+
+            @Override
+            protected List<JPanel> doInBackground()
+                    throws Exception {
+
+                List<JPanel> loaded =
+                        new ArrayList<>();
+
+
+                Map<String, String> params =
+                        currentFilter.toParams();
+
+
+                // =================================================
+                // REVENUE BY REGION
+                // =================================================
+
+                loaded.add(
+                        AnalyticsCharts.bar(
+                                "Revenue by Region",
+                                "Region",
+                                "Revenue ($)",
+                                AnalyticsApi.points(
+                                        "api/sales/revenue-region",
+                                        params
+                                ),
+                                "Revenue",
+                                false,
+                                region ->
+                                        DrilldownDialog.showSales(
+                                                OverviewPanel.this,
+                                                null,
+                                                null,
+                                                region
+                                        )
+                        )
+                );
+
+
+                // =================================================
+                // REVENUE BY CATEGORY
+                // =================================================
+
+                loaded.add(
+                        AnalyticsCharts.bar(
+                                "Revenue by Category",
+                                "Category",
+                                "Revenue ($)",
+                                AnalyticsApi.points(
+                                        "api/products/revenue-category",
+                                        params
+                                ),
+                                "Revenue",
+                                false,
+                                category ->
+                                        DrilldownDialog.showSales(
+                                                OverviewPanel.this,
+                                                null,
+                                                category,
+                                                currentFilter.region()
+                                        )
+                        )
+                );
+
+
+                // =================================================
+                // STOCK BY WAREHOUSE
+                // CLICK = INVENTORY DRILL-DOWN
+                // =================================================
+
+                loaded.add(
+                        AnalyticsCharts.bar(
+                                "Stock by Warehouse",
+                                "Warehouse",
+                                "Units in Stock",
+                                AnalyticsApi.points(
+                                        "api/inventory/stock-warehouse",
+                                        params
+                                ),
+                                "Stock",
+                                false,
+                                warehouse ->
+                                        DrilldownDialog.showInventory(
+                                                OverviewPanel.this,
+                                                warehouse,
+                                                currentFilter.toParams()
+                                        )
+                        )
+                );
+
+
+                // =================================================
+                // MARKETING SPEND BY CHANNEL
+                // CLICK PIE SECTION = MARKETING DRILL-DOWN
+                // =================================================
+
+                loaded.add(
+                        AnalyticsCharts.pie(
+                                "Marketing Spend by Channel",
+                                AnalyticsApi.points(
+                                        "api/marketing/spend-channel",
+                                        params
+                                ),
+                                channel ->
+                                        DrilldownDialog.showMarketing(
+                                                OverviewPanel.this,
+                                                channel,
+                                                currentFilter.toParams()
+                                        )
+                        )
+                );
+
+
+                return loaded;
+            }
+
+
+            @Override
+            protected void done() {
+
+                chartsGrid.removeAll();
+
+
+                /*
+                 * Original Overview Revenue chart.
+                 */
+                chartsGrid.add(
+                        revenueChartPanel
+                );
+
+
+                try {
+
+                    List<JPanel> loaded =
+                            get();
+
+
+                    for (
+                            JPanel chart :
+                            loaded
+                    ) {
+
+                        /*
+                         * Compact Overview charts.
+                         *
+                         * Full-size view is available
+                         * by double-clicking.
+                         */
+                        chart.setPreferredSize(
+                                new Dimension(
+                                        420,
+                                        220
+                                )
+                        );
+
+                        chart.setMinimumSize(
+                                new Dimension(
+                                        280,
+                                        200
+                                )
+                        );
+
+                        chartsGrid.add(chart);
+                    }
+
+                } catch (Exception ex) {
+
+                    ex.printStackTrace();
+
+                    chartsGrid.add(
+                            AnalyticsCharts.messageCard(
+                                    "Unable to load charts",
+                                    ex.getMessage() == null
+                                            ? "Dashboard chart request failed."
+                                            : ex.getMessage()
+                            )
+                    );
+                }
+
+
+                refreshButton.setEnabled(true);
+
+                refreshButton.setText(
+                        "Refresh"
+                );
+
+
+                chartsGrid.revalidate();
+                chartsGrid.repaint();
+            }
+
+        }.execute();
     }
 }

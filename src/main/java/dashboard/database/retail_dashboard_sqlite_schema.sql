@@ -58,28 +58,7 @@ CREATE INDEX ix_mkt_date      ON marketing(campaign_date);
 CREATE INDEX ix_inv_prod_date ON inventory(product_id, snapshot_date);
 
 
--- ---------- SECTION 2 : KPI CACHE TABLE ----------
--- SQLite has no stored procedures, so this table is refreshed by running
--- refresh_kpi_snapshot.sql (Section 5 file) each time new data is loaded.
-
-CREATE TABLE kpi_snapshot (
-    snapshot_id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    kpi_year              INTEGER NOT NULL,
-    total_revenue         REAL,   -- 3.1 Financial
-    revenue_growth_pct    REAL,   -- 3.2 Financial
-    profit                REAL,   -- 3.3 Financial
-    profit_margin_pct     REAL,   -- 3.4 Financial
-    inventory_turnover    REAL,   -- 3.5 Operational
-    retention_rate_pct    REAL,   -- 3.6 Customer Experience
-    marketing_cost_total  REAL,   -- 3.7 Marketing (spend only - not attributed to revenue)
-    conversions_total     INTEGER,-- 3.7 Marketing
-    cost_per_conversion   REAL,   -- 3.7 Marketing
-    calculated_at         TEXT DEFAULT (datetime('now')),
-    UNIQUE (kpi_year)
-);
-
-
--- ---------- SECTION 3 : SANITY CHECK (run after importing the 5 CSVs) ----------
+-- ---------- SECTION 2 : SANITY CHECK (run after importing the 5 CSVs) ----------
 
 SELECT 'products'  AS t, COUNT(*) AS n FROM products  UNION ALL
 SELECT 'customers',      COUNT(*)      FROM customers UNION ALL
@@ -88,7 +67,7 @@ SELECT 'inventory',      COUNT(*)      FROM inventory UNION ALL
 SELECT 'sales',          COUNT(*)      FROM sales;
 
 
--- ---------- SECTION 4 : KPI VIEWS (live, on-demand versions of each KPI) ----------
+-- ---------- SECTION 3 : KPI VIEWS (live, on-demand versions of each KPI) ----------
 
 -- 4.1 Total Revenue & Revenue Growth Rate (Financial)
 CREATE VIEW v_kpi_revenue AS
