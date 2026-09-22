@@ -7,7 +7,8 @@ import dashboard.database.AnalyticsApi;
 public class ProductsPanel extends BaseAnalyticsPage {
 
     public ProductsPanel() {
-        super("Products", "Catalogue margins compared with what actually sold");
+        super("Products", 
+              "The margin the catalogue promises, set against the margin it earns");
         refreshData();
     }
 

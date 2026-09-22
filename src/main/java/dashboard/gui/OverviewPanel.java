@@ -161,7 +161,7 @@ public class OverviewPanel extends JPanel
 
         JLabel analyticsSubtitle =
                 new JLabel(
-                        "Important graphed customer, sales, inventory, products and marketing information for the selected period"
+                        "Key customer, sales, inventory, products and marketing information graphed and displayed for the selected period"
                 );
 
         analyticsSubtitle.setFont(

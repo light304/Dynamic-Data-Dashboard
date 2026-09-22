@@ -12,22 +12,22 @@ import java.util.function.Consumer;
 public class SidebarPanel extends JPanel {
     private static final Color SIDEBAR = new Color(17,24,39);
     private static final Color ACTIVE = new Color(0,212,255);
+    private static final Color DIVIDER = new Color(30, 41, 59);
     private final Consumer<String> pageChangeHandler;
     private final Map<String,JButton> buttons = new LinkedHashMap<>();
 
-        public SidebarPanel(Consumer<String> pageChangeHandler, Runnable onUpload, Runnable onLogout) {
+    public SidebarPanel(Consumer<String> pageChangeHandler, Runnable onUpload, Runnable onLogout) {
         this.pageChangeHandler = pageChangeHandler;
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(210,0));
         setBackground(SIDEBAR);
-        setBorder(new EmptyBorder(25,18,25,18));
+        setBorder(new EmptyBorder(0,18,25,18));
 
         // Nav Bar (Pages)
         JPanel nav = new JPanel();
         nav.setLayout(new BoxLayout(nav,BoxLayout.Y_AXIS));
         nav.setBackground(SIDEBAR);
 
-        // Pages (all viewable, except Alerts is only for Managers)
         List<String> pages = new ArrayList<>(List.of(
                 "Overview", "Sales", "Inventory", "Products",
                 "Marketing", "Customers", "Reports"));
@@ -40,21 +40,43 @@ public class SidebarPanel extends JPanel {
             addButton(nav, page, "Overview".equals(page));
         }
 
-        add(nav,BorderLayout.NORTH);
-
-        // Upload CSV Button
+        /*
+         * Upload sits with the navigation rather than beside Log Out.
+         * Loading data is a task; signing out ends the session. Keeping
+         * them apart makes the destructive one harder to hit by accident.
+         */
         JButton upload = new JButton("Upload Data (CSV)");
         upload.setFocusPainted(false);
         upload.setBorderPainted(false);
         upload.setOpaque(true);
-        upload.setBackground(new Color(30, 41, 59));
+        upload.setBackground(DIVIDER);
         upload.setForeground(Color.WHITE);
         upload.setFont(Theme.BODY);
         upload.setPreferredSize(new Dimension(174, 38));
+        upload.setMaximumSize(new Dimension(174, 38));
+        upload.setAlignmentX(Component.LEFT_ALIGNMENT);
         upload.setToolTipText("Load products, customers, marketing, inventory or sales data from a CSV file");
         upload.addActionListener(e -> onUpload.run());
 
-        // Logout Button
+        JSeparator rule = new JSeparator(SwingConstants.HORIZONTAL);
+        rule.setForeground(DIVIDER);
+        rule.setBackground(SIDEBAR);
+        rule.setMaximumSize(new Dimension(174, 1));
+        rule.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel north = new JPanel();
+        north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
+        north.setBackground(SIDEBAR);
+        north.add(buildBranding());
+        north.add(nav);
+        north.add(Box.createVerticalStrut(6));
+        north.add(rule);
+        north.add(Box.createVerticalStrut(14));
+        north.add(upload);
+
+        add(north, BorderLayout.NORTH);
+
+        // Log Out stays alone at the bottom, beneath the signed-in details.
         JButton logout = new JButton("Log Out");
         logout.setFocusPainted(false);
         logout.setBorderPainted(false);
@@ -63,39 +85,88 @@ public class SidebarPanel extends JPanel {
         logout.setForeground(Color.WHITE);
         logout.setFont(Theme.BODY);
         logout.setPreferredSize(new Dimension(174, 34));
+        logout.setMaximumSize(new Dimension(174, 34));
+        logout.setAlignmentX(Component.LEFT_ALIGNMENT);
         logout.setToolTipText("Sign out and return to the login screen");
         logout.addActionListener(e -> onLogout.run());
-
-        UserSession session = UserSession.getInstance();
-
-        JLabel who = new JLabel();
-
-        if (session.getFullName() == null) {
-            who.setText(" ");
-        } else {
-            who.setText(
-                    "<html><div style='width:174px'>"
-                    + "Signed in as: " + session.getFullName()
-                    + "<br>Access Level: " + session.getRoleName()
-                    + "</div></html>"
-            );
-        }
-
-        who.setForeground(new Color(148, 163, 184));
-        who.setFont(Theme.SMALL);
-        who.setHorizontalAlignment(SwingConstants.LEFT);
 
         JPanel bottom = new JPanel();
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
         bottom.setBackground(SIDEBAR);
-        bottom.add(who);
-        bottom.add(Box.createVerticalStrut(8));
-        bottom.add(upload);
-        bottom.add(Box.createVerticalStrut(6));
+        bottom.add(buildSignedIn());
+        bottom.add(Box.createVerticalStrut(10));
         bottom.add(logout);
 
         add(bottom, BorderLayout.SOUTH);
+    }
 
+    /**
+     * Signed-in details.
+     *
+     * A JTextArea rather than a JLabel: a plain JLabel will not wrap, and
+     * the HTML-in-JLabel alternative is unreliable inside a BoxLayout, so a
+     * long name would be truncated rather than run onto a second line.
+     */
+    private JTextArea buildSignedIn() {
+
+        UserSession session = UserSession.getInstance();
+
+        String text = session.getFullName() == null
+                ? " "
+                : "Signed in as: " + session.getFullName() 
+                + "\nAccess Level: " + session.getRoleName();
+
+        JTextArea who = new JTextArea(text);
+        who.setFont(Theme.SMALL);
+        who.setForeground(new Color(148, 163, 184));
+        who.setBackground(SIDEBAR);
+        who.setLineWrap(true);
+        who.setWrapStyleWord(true);
+        who.setEditable(false);
+        who.setFocusable(false);
+        who.setOpaque(true);
+        who.setBorder(null);
+        who.setAlignmentX(Component.LEFT_ALIGNMENT);
+        who.setMaximumSize(new Dimension(174, 80));
+
+        return who;
+    }
+
+    /**
+     * Application branding, moved here from DashboardFrame's top strip.
+     */
+    private JPanel buildBranding() {
+
+        JPanel branding = new JPanel();
+        branding.setLayout(new BoxLayout(branding, BoxLayout.Y_AXIS));
+        branding.setBackground(SIDEBAR);
+        branding.setBorder(new EmptyBorder(24, 0, 22, 0));
+        branding.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel line1 = new JLabel("Dynamic Retail");
+        line1.setForeground(Color.WHITE);
+        line1.setFont(Theme.BRAND);
+        line1.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel line2 = new JLabel("Dashboard");
+        line2.setForeground(ACTIVE);
+        line2.setFont(Theme.BRAND);
+        line2.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        String role = UserSession.getInstance().getRoleName();
+
+        // JLabel sub = new JLabel(
+        //         role == null ? "Dashboard" : role + " Access");
+        // sub.setForeground(new Color(170, 180, 195));
+        // sub.setFont(Theme.SMALL);
+        // sub.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        branding.add(line1);
+        branding.add(line2);
+        branding.add(Box.createVerticalStrut(3));
+        // branding.add(sub);
+
+        return branding;
     }
 
     private void addButton(JPanel nav,String page,boolean active) {

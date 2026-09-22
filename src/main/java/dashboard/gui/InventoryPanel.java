@@ -7,7 +7,8 @@ import dashboard.database.AnalyticsApi;
 public class InventoryPanel extends BaseAnalyticsPage {
 
     public InventoryPanel() {
-        super("Inventory", "Solo inventory analysis and cross-table stock performance");
+        super("Inventory", 
+              "The stock held, measured against the rate it is selling");
         refreshData();
     }
 

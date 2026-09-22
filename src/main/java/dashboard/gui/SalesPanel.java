@@ -25,7 +25,7 @@ public class SalesPanel extends BaseAnalyticsPage {
 
         super(
                 "Sales",
-                "Sales performance, regional revenue and cross-table profitability"
+                "The trading revenue, and the regions and products driving it"
         );
 
         /*
