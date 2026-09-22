@@ -1,3 +1,4 @@
+package dashboard.auth;
 /**
  * UserSession  –  Singleton holding the currently authenticated user.
  *
@@ -24,7 +25,7 @@ public class UserSession {
     private String username;
     private String fullName;
     private String email;
-    private String roleName;       // "Admin" | "Manager" | "Viewer"
+    private String roleName;       // "Manager" | "Staff"
 
     // Lifecycle 
 
@@ -58,9 +59,8 @@ public class UserSession {
     public boolean isLoggedIn() { return username != null; }
 
     // Role helpers 
-    public boolean isAdmin()   { return "Admin".equalsIgnoreCase(roleName);   }
     public boolean isManager() { return "Manager".equalsIgnoreCase(roleName); }
-    public boolean isViewer()  { return "Viewer".equalsIgnoreCase(roleName);  }
+    public boolean isStaff()   { return "Staff".equalsIgnoreCase(roleName);  }
 
     @Override
     public String toString() {

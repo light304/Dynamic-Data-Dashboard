@@ -1,3 +1,5 @@
+package dashboard.auth;
+import dashboard.gui.DashboardFrame;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -36,7 +38,7 @@ public class LoginFrame extends JFrame {
     private JTextField     usernameField;
     private JPasswordField passwordField;
     private JButton        signInBtn;
-    private JLabel         errorLabel;
+    private JTextArea      errorArea;
     private JLabel         statusLabel;
 
     private final AuthService authService;
@@ -51,9 +53,9 @@ public class LoginFrame extends JFrame {
 
     // Frame setup 
     private void setupFrame() {
-        setTitle("Dynamic Data Dashboard  —  Sign In");
+        setTitle("Dynamic Data Dashboard - Sign In");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(480, 580);
+        setSize(480, 700);
         setLocationRelativeTo(null);
         setResizable(false);
         getContentPane().setBackground(BG);
@@ -77,7 +79,6 @@ public class LoginFrame extends JFrame {
         card.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(CARD_BORDER, 1, true),
                 new EmptyBorder(44, 52, 44, 52)));
-        card.setPreferredSize(new Dimension(430, 490));
 
         card.add(buildHeader());
         card.add(vGap(28));
@@ -94,18 +95,33 @@ public class LoginFrame extends JFrame {
         card.add(passwordField);
         card.add(vGap(12));
 
-        // Error area
-        errorLabel = styledLabel(" ", 12, ERROR);
-        card.add(errorLabel);
-        card.add(vGap(18));
+        // Error area — wraps natively, fixed height so nothing shifts
+        errorArea = new JTextArea();
+        errorArea.setLineWrap(true);
+        errorArea.setWrapStyleWord(true);
+        errorArea.setEditable(false);
+        errorArea.setFocusable(false);
+        errorArea.setOpaque(false);
+        errorArea.setBorder(null);
+        errorArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        errorArea.setForeground(ERROR);
+        errorArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        errorArea.setMinimumSize(new Dimension(320, 54));
+        errorArea.setPreferredSize(new Dimension(320, 54));
+        errorArea.setMaximumSize(new Dimension(320, 54));
+        card.add(errorArea);
+        card.add(vGap(26));
 
         signInBtn = buildSignInButton();
         card.add(signInBtn);
         card.add(vGap(14));
 
         // Status line (shows "Welcome, ..." on success)
-        statusLabel = styledLabel(" ", 11, TEXT_MUTED);
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        statusLabel = styledLabel(" ", 13, TEXT_MUTED);
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        statusLabel.setMinimumSize(new Dimension(320, 22));
+        statusLabel.setPreferredSize(new Dimension(320, 22));
+        statusLabel.setMaximumSize(new Dimension(320, 22));
         card.add(statusLabel);
 
         return card;
@@ -234,7 +250,7 @@ public class LoginFrame extends JFrame {
         p.setBackground(BG);
         p.setBorder(new EmptyBorder(0, 0, 10, 0));
         JLabel lbl = new JLabel(
-                "© 2025 Dynamic Data Dashboard  ·  v1.0  ·  Offline Mode");
+                "© 2026 AUT Dynamic Data Dashboard  ·  v1.0 - PROTOTYPE ·  Offline Localhost App");
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lbl.setForeground(new Color(0x3A556A));
         p.add(lbl);
@@ -255,8 +271,6 @@ public class LoginFrame extends JFrame {
         setFormEnabled(false);
         signInBtn.setText("Verifying…");
         clearError();
-        statusLabel.setForeground(TEXT_MUTED);
-        statusLabel.setText("Checking credentials…");
 
         SwingWorker<AuthService.AuthResult, Void> worker =
                 new SwingWorker<>() {
@@ -271,7 +285,7 @@ public class LoginFrame extends JFrame {
                     AuthService.AuthResult result = get();
                     if (result.success) {
                         statusLabel.setForeground(SUCCESS);
-                        statusLabel.setText("✓  Welcome, "
+                        statusLabel.setText("Success! Welcome, "
                                 + result.session.getFullName() + "!");
                         // Brief pause so the user sees the welcome message
                         Timer t = new Timer(900, ev -> openDashboard(result.session));
@@ -297,38 +311,18 @@ public class LoginFrame extends JFrame {
 
     //  Post-login 
     private void openDashboard(UserSession session) {
-    
-        // Replace the dialog with real dashboard frame:
-        //
-        //   MainDashboardFrame dash = new MainDashboardFrame(session);
-        //   dash.setVisible(true);
-        //   dispose();
-        // 
-        String roleMsg = switch (session.getRoleName()) {
-            case "Admin"   -> "Full access granted (Admin).";
-            case "Manager" -> "Dashboard & reports access granted (Manager).";
-            default        -> "Read-only access granted (Viewer).";
-        };
-
-        JOptionPane.showMessageDialog(this,
-                "<html><b>Login successful!</b><br><br>"
-                + "User:&nbsp;&nbsp; " + session.getFullName() + "<br>"
-                + "Role:&nbsp;&nbsp; " + session.getRoleName() + "<br><br>"
-                + "<i>" + roleMsg + "</i><br><br>"
-                + "→ Proceeding to Dashboard…</html>",
-                "Welcome", JOptionPane.INFORMATION_MESSAGE);
-
-        dispose();   // Close login window → main dashboard opens here
+        dispose();
+        SwingUtilities.invokeLater(() -> new DashboardFrame().setVisible(true));
     }
 
     // UI helpers 
     private void showError(String message) {
-        errorLabel.setText("⚠  " + message);
+        errorArea.setText(message);
         shakeWindow();
     }
 
     private void clearError() {
-        errorLabel.setText(" ");
+        errorArea.setText("");
     }
 
     private void setFormEnabled(boolean enabled) {
