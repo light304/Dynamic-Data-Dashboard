@@ -1,5 +1,7 @@
 package dashboard.gui;
-
+import dashboard.auth.UserSession;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -13,7 +15,7 @@ public class SidebarPanel extends JPanel {
     private final Consumer<String> pageChangeHandler;
     private final Map<String,JButton> buttons = new LinkedHashMap<>();
 
-    public SidebarPanel(Consumer<String> pageChangeHandler, Runnable onUpload) {
+        public SidebarPanel(Consumer<String> pageChangeHandler, Runnable onUpload, Runnable onLogout) {
         this.pageChangeHandler = pageChangeHandler;
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(210,0));
@@ -25,9 +27,19 @@ public class SidebarPanel extends JPanel {
         nav.setLayout(new BoxLayout(nav,BoxLayout.Y_AXIS));
         nav.setBackground(SIDEBAR);
 
-        for (String page : new String[]{"Overview","Sales","Inventory","Products","Marketing","Customers","Reports","Alerts"}) {
-            addButton(nav,page,"Overview".equals(page));
+        // Pages (all viewable, except Alerts is only for Managers)
+        List<String> pages = new ArrayList<>(List.of(
+                "Overview", "Sales", "Inventory", "Products",
+                "Marketing", "Customers", "Reports"));
+
+        if (UserSession.getInstance().isManager()) {
+            pages.add("Alerts");
         }
+
+        for (String page : pages) {
+            addButton(nav, page, "Overview".equals(page));
+        }
+        
         add(nav,BorderLayout.NORTH);
 
         // Upload CSV Button
@@ -42,9 +54,35 @@ public class SidebarPanel extends JPanel {
         upload.setToolTipText("Load products, customers, marketing, inventory or sales data from a CSV file");
         upload.addActionListener(e -> onUpload.run());
 
-        JPanel bottom = new JPanel(new BorderLayout());
+        // Logout Button
+        JButton logout = new JButton("Log Out");
+        logout.setFocusPainted(false);
+        logout.setBorderPainted(false);
+        logout.setOpaque(true);
+        logout.setBackground(new Color(55, 65, 81));
+        logout.setForeground(Color.WHITE);
+        logout.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        logout.setPreferredSize(new Dimension(174, 34));
+        logout.setToolTipText("Sign out and return to the login screen");
+        logout.addActionListener(e -> onLogout.run());
+
+        UserSession session = UserSession.getInstance();
+        JLabel who = new JLabel(session.getFullName() == null
+                ? " "
+                : session.getFullName() + "  ·  " + session.getRoleName());
+        who.setForeground(new Color(148, 163, 184));
+        who.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        who.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JPanel bottom = new JPanel();
+        bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
         bottom.setBackground(SIDEBAR);
-        bottom.add(upload, BorderLayout.SOUTH);
+        bottom.add(who);
+        bottom.add(Box.createVerticalStrut(8));
+        bottom.add(upload);
+        bottom.add(Box.createVerticalStrut(6));
+        bottom.add(logout);
+
         add(bottom, BorderLayout.SOUTH);
 
     }

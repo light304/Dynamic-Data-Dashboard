@@ -1,3 +1,4 @@
+package dashboard.auth;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +22,8 @@ import java.time.format.DateTimeFormatter;
 public class AuthService {
 
     // Configuration 
-    private static final String DB_URL      = "jdbc:sqlite:login.db";
+    private static final java.io.File DB_FILE = new java.io.File(System.getProperty("user.dir"), "login.db");
+    private static final String DB_URL = "jdbc:sqlite:" + DB_FILE.getAbsolutePath();
     private static final int    MAX_ATTEMPTS = 5;
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -49,6 +51,8 @@ public class AuthService {
     public boolean initializeDatabase() {
         try (Connection conn = getConnection();
              Statement  stmt = conn.createStatement()) {
+
+            System.out.println("[AuthService] Login database: " + DB_FILE.getAbsolutePath());
 
             stmt.execute("PRAGMA journal_mode = WAL;");
             stmt.execute("PRAGMA foreign_keys = ON;");
@@ -104,22 +108,17 @@ public class AuthService {
             // 5 seed roles
             stmt.execute("""
                 INSERT OR IGNORE INTO roles (role_name, description) VALUES
-                    ('Admin',   'Full access: manage users, view all data, edit settings'),
-                    ('Manager', 'View all dashboard data and reports; cannot manage users'),
-                    ('Viewer',  'Read-only access to dashboard; no admin functions')""");
+                    ('Manager', 'Full Advanced dashboard access including the alert panel and thresholds'),
+                    ('Staff',   'Standard dashboard access for day-to-day use; No alert panel access')""");
 
             // 6 – seed default users (hashes computed at runtime)
-            insertDefaultUserIfAbsent(conn, "admin",
-                    PasswordUtil.sha256("Admin@123"),
-                    "Admin", "System Administrator", "admin@dashboard.local");
-
-            insertDefaultUserIfAbsent(conn, "manager",
-                    PasswordUtil.sha256("Manager@123"),
+            insertDefaultUserIfAbsent(conn, "Manager",
+                    PasswordUtil.sha256("Manager123"),
                     "Manager", "Dashboard Manager", "manager@dashboard.local");
 
-            insertDefaultUserIfAbsent(conn, "viewer",
-                    PasswordUtil.sha256("Viewer@123"),
-                    "Viewer", "Dashboard Viewer", "viewer@dashboard.local");
+            insertDefaultUserIfAbsent(conn, "Staff",
+                    PasswordUtil.sha256("Staff123"),
+                    "Staff", "Retail Staff", "staff@dashboard.local");
 
             return true;
 
@@ -223,10 +222,10 @@ public class AuthService {
             // distinguish wrong-password from unknown username for the audit note
             if (usernameExists(conn, username.trim())) {
                 logAttempt(conn, username, false, "Wrong password", now);
-                return fail(username, "Incorrect password.  " + lockMsg, conn);
+                return fail(username, "Incorrect password. " + lockMsg, conn);
             } else {
                 logAttempt(conn, username, false, "Unknown username", now);
-                return fail(username, "Username not found.  " + lockMsg, conn);
+                return fail(username, "Username not found. " + lockMsg, conn);
             }
 
         } catch (SQLException e) {

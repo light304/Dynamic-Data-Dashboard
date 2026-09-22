@@ -4,6 +4,10 @@ import dashboard.database.AnalyticsApi;
 import dashboard.database.SchemaIntrospector;
 import dashboard.database.SchemaIntrospector.TableMeta;
 
+import dashboard.auth.AuthService;
+import dashboard.auth.LoginFrame;
+import dashboard.auth.UserSession;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashMap;
@@ -68,7 +72,7 @@ public class DashboardFrame extends JFrame {
         // ORIGINAL STRUCTURE: the top strip spans the whole window and contains
         // the dark dashboard branding directly above the sidebar.
         root.add(createTopPanel(), BorderLayout.NORTH);
-        root.add(new SidebarPanel(this::showPage, this::uploadCsv), BorderLayout.WEST);
+        root.add(new SidebarPanel(this::showPage, this::uploadCsv, this::logout), BorderLayout.WEST);
 
         // The filter is only above the changing page content, not above the sidebar.
         JPanel centre = new JPanel(new BorderLayout());
@@ -139,8 +143,11 @@ public class DashboardFrame extends JFrame {
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
         content.add(reports, "Reports");
-        AlertsPanel alerts = new AlertsPanel();
-content.add(alerts, "Alerts");
+        
+        if (UserSession.getInstance().isManager()) {
+            AlertsPanel alerts = new AlertsPanel();
+            content.add(alerts, "Alerts");
+        }
 
         // PERFORMANCE: load only the visible page at startup. Previously all six
         // pages refreshed together, which caused several API calls and made it slow.
@@ -263,6 +270,22 @@ content.add(alerts, "Alerts");
         }.execute();
 
         loading.setVisible(true);
+    }
+
+    private void logout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Sign out and return to the login screen?",
+                "Log Out",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        UserSession.getInstance().logout();
+        dispose();
+
+        AuthService authService = new AuthService();
+        SwingUtilities.invokeLater(() ->
+                new LoginFrame(authService).setVisible(true));
     }
 
 }
