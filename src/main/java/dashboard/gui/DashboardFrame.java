@@ -28,7 +28,7 @@ import java.util.Map;
  */
 public class DashboardFrame extends JFrame {
 
-    private static final Color BACKGROUND = new Color(245, 247, 250);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
 
     private final CardLayout cards = new CardLayout();
     private final JPanel content = new JPanel(cards);

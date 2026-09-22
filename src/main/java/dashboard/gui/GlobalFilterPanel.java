@@ -16,12 +16,12 @@ import java.util.function.Consumer;
 public class GlobalFilterPanel extends JPanel {
 
     // Main colours used by the filter bar.
-    private static final Color ACTIVE = new Color(0, 190, 225);
-    private static final Color ACTIVE_HOVER = new Color(0, 168, 204);
-    private static final Color TEXT = new Color(31, 41, 55);
-    private static final Color MUTED = new Color(100, 116, 139);
-    private static final Color BORDER = new Color(226, 232, 240);
-    private static final Color SUCCESS = new Color(22, 163, 74);
+    private static final Color ACTIVE = Theme.ACCENT;
+    private static final Color ACTIVE_HOVER = Theme.ACCENT_HOVER;
+    private static final Color TEXT = Theme.TEXT;
+    private static final Color MUTED = Theme.TEXT_MUTED;
+    private static final Color BORDER = Theme.BORDER;
+    private static final Color SUCCESS = Theme.GOOD;
 
     // Dashboard filter controls.
     private final JComboBox<Integer> yearFilter =

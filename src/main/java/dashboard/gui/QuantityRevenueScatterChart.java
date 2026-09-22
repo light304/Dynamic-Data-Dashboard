@@ -11,7 +11,8 @@ import java.util.Map;
 /** Cross-table scatter: sales + products; one point per product, coloured by category. */
 public class QuantityRevenueScatterChart extends JPanel {
 
-    private static final Color BORDER = new Color(226, 232, 240);
+    private static final Color BORDER = Theme.BORDER;
+
     private final JPanel chartHost = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel("Waiting for quantity/revenue data...");
 
@@ -29,12 +30,13 @@ public class QuantityRevenueScatterChart extends JPanel {
         add(status, BorderLayout.SOUTH);
     }
 
-    public void applyFilters(int year, String scope, String selectedMonth, String period) {
+    public void applyFilters(int year, String scope, String selectedMonth, String period, String region) {
         try {
             Map<String, String> params = new LinkedHashMap<>();
             params.put("year", String.valueOf(year));
             params.put("scope", scope);
             params.put("period", period);
+            params.put("region", region);
             if (selectedMonth != null) params.put("month", selectedMonth);
 
             var points = AnalyticsApi.xyPoints("api/sales/quantity-revenue", params);
@@ -70,7 +72,7 @@ public class QuantityRevenueScatterChart extends JPanel {
     public void applyFilter(DashboardFilter filter) {
         if (filter == null) filter = DashboardFilter.defaults();
         String selectedMonth = "Weekly".equals(filter.scope()) ? filter.month() : null;
-        applyFilters(filter.year(), filter.scope(), selectedMonth, filter.period());
+        applyFilters(filter.year(), filter.scope(), selectedMonth, filter.period(), filter.region());
     }
 
 }

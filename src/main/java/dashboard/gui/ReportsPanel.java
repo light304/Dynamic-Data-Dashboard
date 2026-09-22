@@ -16,8 +16,8 @@ import java.time.LocalDate;
 
 public class ReportsPanel extends JPanel implements FilterableDashboardPage {
 
-    private static final Color BACKGROUND = new Color(245, 247, 250);
-    private static final Color PRIMARY = new Color(31, 41, 55);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
+    private static final Color PRIMARY = Theme.TEXT;
 
     private final Map<ReportSection, JCheckBox> boxes = new LinkedHashMap<>();
     private final JLabel periodLabel = new JLabel(" ");

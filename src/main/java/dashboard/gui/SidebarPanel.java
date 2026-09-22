@@ -3,15 +3,17 @@ import dashboard.auth.UserSession;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import javax.swing.border.Border;
 
 public class SidebarPanel extends JPanel {
-    private static final Color SIDEBAR = new Color(17,24,39);
-    private static final Color ACTIVE = new Color(0,212,255);
+    private static final Color SIDEBAR = Theme.SIDEBAR;
+    private static final Color ACTIVE = Theme.ACCENT;
     private static final Color DIVIDER = new Color(30, 41, 59);
     private final Consumer<String> pageChangeHandler;
     private final Map<String,JButton> buttons = new LinkedHashMap<>();
@@ -49,7 +51,7 @@ public class SidebarPanel extends JPanel {
         upload.setFocusPainted(false);
         upload.setBorderPainted(false);
         upload.setOpaque(true);
-        upload.setBackground(DIVIDER);
+        upload.setBackground(Theme.SIDEBAR_BUTTON);
         upload.setForeground(Color.WHITE);
         upload.setFont(Theme.BODY);
         upload.setPreferredSize(new Dimension(174, 38));
@@ -81,7 +83,7 @@ public class SidebarPanel extends JPanel {
         logout.setFocusPainted(false);
         logout.setBorderPainted(false);
         logout.setOpaque(true);
-        logout.setBackground(new Color(55, 65, 81));
+        logout.setBackground(Theme.SIDEBAR_BUTTON);
         logout.setForeground(Color.WHITE);
         logout.setFont(Theme.BODY);
         logout.setPreferredSize(new Dimension(174, 34));
@@ -149,7 +151,7 @@ public class SidebarPanel extends JPanel {
         line1.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel line2 = new JLabel("Dashboard");
-        line2.setForeground(ACTIVE);
+        line2.setForeground(Color.WHITE);
         line2.setFont(Theme.BRAND);
         line2.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -177,11 +179,11 @@ public class SidebarPanel extends JPanel {
         button.setOpaque(true);
         button.setBackground(active?ACTIVE:SIDEBAR);
         button.setForeground(Color.WHITE);
-        button.setFont(Theme.BODY);
+        button.setFont(active ? Theme.BODY_STRONG : Theme.BODY);
         button.setPreferredSize(new Dimension(174,40));
         button.setMaximumSize(new Dimension(174,40));
         button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setBorder(new EmptyBorder(0,15,0,15));
+        button.setBorder(navBorder(active));
         button.addActionListener(e->{ setActive(page); pageChangeHandler.accept(page); });
         buttons.put(page,button);
         nav.add(button);
@@ -189,6 +191,19 @@ public class SidebarPanel extends JPanel {
     }
 
     private void setActive(String selected) {
-        buttons.forEach((name,button)->button.setBackground(name.equals(selected)?ACTIVE:SIDEBAR));
+        buttons.forEach((name, button) -> {
+            boolean on = name.equals(selected);
+            button.setBackground(on ? ACTIVE : SIDEBAR);
+            button.setFont(on ? Theme.BODY_STRONG : Theme.BODY);
+            button.setBorder(navBorder(on));
+        });
+    }
+
+    private static Border navBorder(boolean active) {
+        return active
+                ? BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.HIGHLIGHT),
+                        new EmptyBorder(0, 12, 0, 15))
+                : new EmptyBorder(0, 15, 0, 15);
     }
 }

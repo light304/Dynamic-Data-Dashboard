@@ -16,6 +16,7 @@ import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.entity.CategoryItemEntity;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
@@ -35,17 +36,10 @@ import java.util.Map;
 
 public class RevenueChartPanel extends JPanel {
 
-    private static final Color ACTIVE_COLOR =
-            new Color(0, 212, 255);
-
-    private static final Color PRIMARY_TEXT =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY_TEXT =
-            new Color(100, 116, 139);
-
-    private static final Color BORDER_COLOR =
-            new Color(226, 232, 240);
+    private static final Color ACTIVE_COLOR   = Theme.SERIES_1;
+    private static final Color PRIMARY_TEXT   = Theme.TEXT;
+    private static final Color SECONDARY_TEXT = Theme.TEXT_MUTED;
+    private static final Color BORDER_COLOR   = Theme.BORDER;
 
     private DefaultCategoryDataset revenueDataset;
 
@@ -1114,6 +1108,9 @@ public class RevenueChartPanel extends JPanel {
                 .setTickLabelFont(
                         Theme.AXIS_TICK
                 );
+
+        plot.getDomainAxis().setCategoryLabelPositions(
+                CategoryLabelPositions.UP_45);
 
         plot.getRangeAxis()
                 .setTickLabelFont(

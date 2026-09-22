@@ -21,17 +21,17 @@ import java.awt.event.*;
 public class LoginFrame extends JFrame {
 
     // Palette
-    private static final Color BG          = new Color(0x0D1B2A);
+    private static final Color BG          = Theme.SIDEBAR;
     private static final Color CARD_BG     = new Color(0x1B2A3B);
     private static final Color CARD_BORDER = new Color(0x1E3A5F);
     private static final Color FIELD_BG    = new Color(0x0A1628);
     private static final Color FIELD_IDLE  = new Color(0x263A4E);
-    private static final Color FIELD_FOCUS = new Color(0x4FC3F7);
+    private static final Color FIELD_FOCUS = Theme.HIGHLIGHT;
     private static final Color BTN_START   = new Color(0x0D47A1);
     private static final Color BTN_END     = new Color(0x4FC3F7);
     private static final Color TEXT_WHITE  = new Color(0xF0F4F8);
-    private static final Color TEXT_MUTED  = new Color(0x8BAAB9);
-    private static final Color ACCENT      = new Color(0x4FC3F7);
+    private static final Color TEXT_MUTED  = Theme.SIDEBAR_MUTED;
+    private static final Color ACCENT      = Theme.HIGHLIGHT;
     private static final Color ERROR       = new Color(0xFF5252);
     private static final Color SUCCESS     = new Color(0x69F0AE);
 

@@ -8,10 +8,10 @@ import java.util.concurrent.Callable;
 
 public abstract class BaseAnalyticsPage extends JPanel implements FilterableDashboardPage {
 
-    protected static final Color BACKGROUND = new Color(245, 247, 250);
-    protected static final Color PRIMARY = new Color(31, 41, 55);
-    protected static final Color SECONDARY = new Color(100, 116, 139);
-    protected static final Color ACCENT = new Color(0, 188, 225);
+    protected static final Color BACKGROUND = Theme.PAGE_BG;
+    protected static final Color PRIMARY = Theme.TEXT;
+    protected static final Color SECONDARY = Theme.TEXT_MUTED;
+    protected static final Color ACCENT = Theme.ACCENT;
 
     protected DashboardFilter filter = DashboardFilter.defaults();
 

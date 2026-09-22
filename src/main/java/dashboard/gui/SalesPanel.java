@@ -73,15 +73,20 @@ public class SalesPanel extends BaseAnalyticsPage {
                 filter.year(),
                 filter.scope(),
                 selectedMonth,
-                filter.period()
+                filter.period(),
+                filter.region()
         );
 
         quantityRevenueScatterChart.applyFilters(
                 filter.year(),
                 filter.scope(),
                 selectedMonth,
-                filter.period()
+                filter.period(),
+                filter.region()
         );
+
+        profitMarginOverTimeChart.applyFilter(filter);
+        quantityRevenueScatterChart.applyFilter(filter);
 
         charts.revalidate();
         charts.repaint();

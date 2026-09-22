@@ -8,17 +8,10 @@ import java.awt.*;
 
 public class KpiPanel extends JPanel {
 
-    private static final Color BACKGROUND_COLOR =
-            new Color(245, 247, 250);
-
-    private static final Color PRIMARY_TEXT =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY_TEXT =
-            new Color(100, 116, 139);
-
-    private static final Color BORDER_COLOR =
-            new Color(226, 232, 240);
+    private static final Color BACKGROUND_COLOR = Theme.PAGE_BG;
+    private static final Color PRIMARY_TEXT     = Theme.TEXT;
+    private static final Color SECONDARY_TEXT   = Theme.TEXT_MUTED;
+    private static final Color BORDER_COLOR     = Theme.BORDER;
 
 //     private static final Color POSITIVE_COLOR =
 //             new Color(22, 163, 74);
@@ -107,7 +100,7 @@ public class KpiPanel extends JPanel {
             "The proportion of pre-existing customers who purchased again in the period.";
 
     private static final String COST_PER_CONVERSION_DESC =
-            "The average marketing spend required to secure one conversion.";
+            "The average marketing spend required to secure one conversion (usually an interaction).";
 
     public KpiPanel() {
 

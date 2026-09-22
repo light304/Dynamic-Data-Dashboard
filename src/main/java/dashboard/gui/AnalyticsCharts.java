@@ -17,7 +17,9 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.renderer.category.LineAndShapeRenderer;
+import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.xy.XYSeries;
@@ -34,11 +36,11 @@ import java.util.function.Consumer;
 
 public final class AnalyticsCharts {
 
-    private static final Color BORDER = new Color(226, 232, 240);
-    private static final Color GRID = new Color(226, 232, 240);
-    private static final Color TEXT = new Color(31, 41, 55);
-    private static final Color SECONDARY_TEXT = new Color(100, 116, 139);
-    private static final Color ACCENT = new Color(0, 188, 225);
+    private static final Color BORDER = Theme.BORDER;
+    private static final Color GRID = Theme.GRID;
+    private static final Color TEXT = Theme.TEXT;
+    private static final Color SECONDARY_TEXT = Theme.TEXT_MUTED;
+    private static final Color ACCENT = Theme.ACCENT;
 
     private AnalyticsCharts() {
     }
@@ -1106,6 +1108,7 @@ public static JPanel pie(
                         && plot.getRenderer()
                         instanceof LineAndShapeRenderer renderer
         ) {
+            renderer.setSeriesPaint(0, Theme.SERIES_1);
 
             renderer.setDefaultStroke(
                     new BasicStroke(
@@ -1120,6 +1123,11 @@ public static JPanel pie(
             renderer.setDefaultShapesFilled(
                     true
             );
+        }
+
+        if (plot.getRenderer() instanceof BarRenderer barRenderer) {
+            barRenderer.setSeriesPaint(0, Theme.SERIES_1);
+            barRenderer.setShadowVisible(false);
         }
     }
 

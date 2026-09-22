@@ -13,17 +13,10 @@ import java.util.Map;
 public class OverviewPanel extends JPanel
         implements FilterableDashboardPage {
 
-    private static final Color BACKGROUND =
-            new Color(245, 247, 250);
-
-    private static final Color PRIMARY =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY =
-            new Color(100, 116, 139);
-
-    private static final Color ACCENT =
-            new Color(0, 188, 225);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
+    private static final Color PRIMARY    = Theme.TEXT;
+    private static final Color SECONDARY  = Theme.TEXT_MUTED;
+    private static final Color ACCENT     = Theme.ACCENT;
 
     private final KpiPanel kpiPanel =
             new KpiPanel();
