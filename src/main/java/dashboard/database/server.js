@@ -14,6 +14,75 @@ const dbPath = path.join(
 
 const db = new Database(dbPath);
 
+// ============================================================
+// ALERTS + THRESHOLDS SETUP
+// FR5 - Persistent alert detection with adjustable thresholds
+// ============================================================
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS alert_thresholds (
+      threshold_key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      threshold_value REAL NOT NULL,
+      unit TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS alerts (
+      alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alert_type TEXT NOT NULL,
+      entity_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      current_value REAL,
+      threshold_value REAL,
+      severity TEXT NOT NULL DEFAULT 'WARNING',
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      resolved_at TEXT
+  );
+`);
+
+
+// ------------------------------------------------------------
+// Default thresholds
+// INSERT OR IGNORE means saved user values are NOT overwritten
+// when the backend restarts.
+// ------------------------------------------------------------
+
+const insertDefaultThreshold = db.prepare(`
+  INSERT OR IGNORE INTO alert_thresholds
+  (
+      threshold_key,
+      display_name,
+      threshold_value,
+      unit
+  )
+  VALUES (?, ?, ?, ?)
+`);
+
+insertDefaultThreshold.run(
+  'LOW_STOCK_PERCENT',
+  'Low Stock',
+  10,
+  '% of average sales'
+);
+
+insertDefaultThreshold.run(
+  'REVENUE_DROP_PERCENT',
+  'Revenue Drop',
+  10,
+  '%'
+);
+
+insertDefaultThreshold.run(
+  'PROFIT_DROP_PERCENT',
+  'Profit Drop',
+  10,
+  '%'
+);
+
+console.log('Alert tables and default thresholds ready.');
+
 // CSV parsing
 const { parse } = require('csv-parse/sync');
 
@@ -3607,6 +3676,752 @@ app.get(
 );
 
 
+
+// ============================================================
+// ALERT DETECTION
+// ============================================================
+
+function getThreshold(key) {
+
+  const row = db.prepare(`
+      SELECT threshold_value
+      FROM alert_thresholds
+      WHERE threshold_key = ?
+  `).get(key);
+
+  return row
+      ? Number(row.threshold_value)
+      : 0;
+}
+
+
+function createOrUpdateAlert({
+  type,
+  entityKey,
+  title,
+  message,
+  currentValue,
+  thresholdValue,
+  severity = 'WARNING'
+}) {
+
+  const existing = db.prepare(`
+      SELECT alert_id
+      FROM alerts
+      WHERE alert_type = ?
+        AND entity_key = ?
+        AND status = 'ACTIVE'
+      LIMIT 1
+  `).get(
+      type,
+      entityKey
+  );
+
+
+  if (existing) {
+
+      db.prepare(`
+          UPDATE alerts
+          SET
+              title = ?,
+              message = ?,
+              current_value = ?,
+              threshold_value = ?,
+              severity = ?
+          WHERE alert_id = ?
+      `).run(
+          title,
+          message,
+          currentValue,
+          thresholdValue,
+          severity,
+          existing.alert_id
+      );
+
+  } else {
+
+      db.prepare(`
+          INSERT INTO alerts
+          (
+              alert_type,
+              entity_key,
+              title,
+              message,
+              current_value,
+              threshold_value,
+              severity,
+              status
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
+      `).run(
+          type,
+          entityKey,
+          title,
+          message,
+          currentValue,
+          thresholdValue,
+          severity
+      );
+  }
+}
+
+
+function resolveMissingAlerts(
+  type,
+  activeEntityKeys
+) {
+
+  const existing =
+      db.prepare(`
+          SELECT
+              alert_id,
+              entity_key
+          FROM alerts
+          WHERE alert_type = ?
+            AND status = 'ACTIVE'
+      `).all(type);
+
+
+  const activeSet =
+      new Set(
+          activeEntityKeys.map(String)
+      );
+
+
+  const resolve =
+      db.prepare(`
+          UPDATE alerts
+          SET
+              status = 'RESOLVED',
+              resolved_at = CURRENT_TIMESTAMP
+          WHERE alert_id = ?
+      `);
+
+
+  for (const alert of existing) {
+
+      if (
+          !activeSet.has(
+              String(alert.entity_key)
+          )
+      ) {
+
+          resolve.run(
+              alert.alert_id
+          );
+      }
+  }
+}
+
+
+function detectLowStockAlerts() {
+
+  const thresholdPercent =
+      getThreshold(
+          'LOW_STOCK_PERCENT'
+      );
+
+
+  /*
+   * Average quantity sold per product is used as the
+   * sales baseline.
+   *
+   * An alert is generated when the latest stock level
+   * is below the configured percentage of that baseline.
+   */
+
+  const rows =
+      db.prepare(`
+          WITH sales_average AS (
+
+              SELECT
+                  product_id,
+                  AVG(quantity) AS average_sales
+
+              FROM sales
+
+              GROUP BY product_id
+          ),
+
+          latest_inventory_date AS (
+
+              SELECT
+                  product_id,
+                  MAX(snapshot_date) AS latest_date
+
+              FROM inventory
+
+              GROUP BY product_id
+          )
+
+          SELECT
+              i.product_id,
+              p.category,
+              i.warehouse,
+              i.stock_level,
+              COALESCE(sa.average_sales, 0) AS average_sales
+
+          FROM inventory i
+
+          JOIN latest_inventory_date latest
+              ON latest.product_id = i.product_id
+             AND latest.latest_date = i.snapshot_date
+
+          JOIN products p
+              ON p.product_id = i.product_id
+
+          LEFT JOIN sales_average sa
+              ON sa.product_id = i.product_id
+
+          ORDER BY i.stock_level ASC
+      `).all();
+
+
+  const activeKeys = [];
+
+
+  for (const row of rows) {
+
+      if (row.average_sales <= 0) {
+          continue;
+      }
+
+
+      const triggerLevel =
+          row.average_sales
+          * (
+              thresholdPercent / 100.0
+          );
+
+
+      if (
+          Number(row.stock_level)
+          < triggerLevel
+      ) {
+
+          const entityKey =
+              `${row.product_id}:${row.warehouse}`;
+
+          activeKeys.push(
+              entityKey
+          );
+
+
+          createOrUpdateAlert({
+
+              type:
+                  'LOW_STOCK',
+
+              entityKey,
+
+              title:
+                  `Low Stock - Product ${row.product_id}`,
+
+              message:
+                  `${row.category} in ${row.warehouse} has `
+                  + `${row.stock_level} units remaining.`,
+
+              currentValue:
+                  Number(row.stock_level),
+
+              thresholdValue:
+                  Number(
+                      triggerLevel.toFixed(2)
+                  ),
+
+              severity:
+                  'WARNING'
+          });
+      }
+  }
+
+
+  resolveMissingAlerts(
+      'LOW_STOCK',
+      activeKeys
+  );
+}
+
+function detectPerformanceAlerts() {
+
+  const revenueThreshold =
+      getThreshold(
+          'REVENUE_DROP_PERCENT'
+      );
+
+  const profitThreshold =
+      getThreshold(
+          'PROFIT_DROP_PERCENT'
+      );
+
+
+  /*
+   * Find the latest two months available in sales.
+   */
+
+  const months =
+      db.prepare(`
+          SELECT DISTINCT
+              strftime(
+                  '%Y-%m',
+                  order_date
+              ) AS month
+
+          FROM sales
+
+          WHERE order_date IS NOT NULL
+
+          ORDER BY month DESC
+
+          LIMIT 2
+      `).all();
+
+
+  if (months.length < 2) {
+
+      resolveMissingAlerts(
+          'REVENUE_DROP',
+          []
+      );
+
+      resolveMissingAlerts(
+          'PROFIT_DROP',
+          []
+      );
+
+      return;
+  }
+
+
+  const currentMonth =
+      months[0].month;
+
+  const previousMonth =
+      months[1].month;
+
+
+  const performance =
+      db.prepare(`
+          SELECT
+
+              strftime(
+                  '%Y-%m',
+                  s.order_date
+              ) AS month,
+
+              COALESCE(
+                  SUM(s.revenue),
+                  0
+              ) AS revenue,
+
+              COALESCE(
+                  SUM(
+                      s.revenue
+                      -
+                      (
+                          s.quantity
+                          * p.cost
+                      )
+                  ),
+                  0
+              ) AS profit
+
+          FROM sales s
+
+          JOIN products p
+              ON p.product_id
+              = s.product_id
+
+          WHERE
+              strftime(
+                  '%Y-%m',
+                  s.order_date
+              ) IN (?, ?)
+
+          GROUP BY month
+      `).all(
+          currentMonth,
+          previousMonth
+      );
+
+
+  const current =
+      performance.find(
+          row =>
+              row.month === currentMonth
+      );
+
+  const previous =
+      performance.find(
+          row =>
+              row.month === previousMonth
+      );
+
+
+  if (!current || !previous) {
+      return;
+  }
+
+
+  // ========================================================
+  // REVENUE DROP
+  // ========================================================
+
+  const revenueActive = [];
+
+
+  if (
+      Number(previous.revenue) > 0
+  ) {
+
+      const revenueDrop =
+          (
+              (
+                  Number(previous.revenue)
+                  -
+                  Number(current.revenue)
+              )
+              /
+              Number(previous.revenue)
+          )
+          * 100;
+
+
+      if (
+          revenueDrop >= revenueThreshold
+      ) {
+
+          revenueActive.push(
+              'BUSINESS'
+          );
+
+
+          createOrUpdateAlert({
+
+              type:
+                  'REVENUE_DROP',
+
+              entityKey:
+                  'BUSINESS',
+
+              title:
+                  'Revenue Drop',
+
+              message:
+                  `Revenue decreased by `
+                  + `${revenueDrop.toFixed(2)}% `
+                  + `from ${previousMonth} `
+                  + `to ${currentMonth}.`,
+
+              currentValue:
+                  Number(
+                      revenueDrop.toFixed(2)
+                  ),
+
+              thresholdValue:
+                  revenueThreshold,
+
+              severity:
+                  'CRITICAL'
+          });
+      }
+  }
+
+
+  resolveMissingAlerts(
+      'REVENUE_DROP',
+      revenueActive
+  );
+
+
+  // ========================================================
+  // PROFIT DROP
+  // ========================================================
+
+  const profitActive = [];
+
+
+  if (
+      Number(previous.profit) > 0
+  ) {
+
+      const profitDrop =
+          (
+              (
+                  Number(previous.profit)
+                  -
+                  Number(current.profit)
+              )
+              /
+              Number(previous.profit)
+          )
+          * 100;
+
+
+      if (
+          profitDrop >= profitThreshold
+      ) {
+
+          profitActive.push(
+              'BUSINESS'
+          );
+
+
+          createOrUpdateAlert({
+
+              type:
+                  'PROFIT_DROP',
+
+              entityKey:
+                  'BUSINESS',
+
+              title:
+                  'Profit Drop',
+
+              message:
+                  `Profit decreased by `
+                  + `${profitDrop.toFixed(2)}% `
+                  + `from ${previousMonth} `
+                  + `to ${currentMonth}.`,
+
+              currentValue:
+                  Number(
+                      profitDrop.toFixed(2)
+                  ),
+
+              thresholdValue:
+                  profitThreshold,
+
+              severity:
+                  'CRITICAL'
+          });
+      }
+  }
+
+
+  resolveMissingAlerts(
+      'PROFIT_DROP',
+      profitActive
+  );
+}
+
+
+function runAlertDetection() {
+
+  const transaction =
+      db.transaction(() => {
+
+          detectLowStockAlerts();
+
+          detectPerformanceAlerts();
+      });
+
+
+  transaction();
+}
+
+// ============================================================
+// ALERT API
+// ============================================================
+
+
+// ------------------------------------------------------------
+// Get saved thresholds
+// ------------------------------------------------------------
+
+app.get(
+  '/api/alerts/thresholds',
+  (req, res) =>
+      safeRoute(
+          res,
+          () => {
+
+              const rows =
+                  db.prepare(`
+                      SELECT
+                          threshold_key,
+                          display_name,
+                          threshold_value,
+                          unit
+
+                      FROM alert_thresholds
+
+                      ORDER BY display_name
+                  `).all();
+
+
+              res.json({
+                  success: true,
+                  data: rows
+              });
+          }
+      )
+);
+
+
+// ------------------------------------------------------------
+// Update threshold
+// ------------------------------------------------------------
+
+app.post(
+  '/api/alerts/thresholds',
+  (req, res) =>
+      safeRoute(
+          res,
+          () => {
+
+              const {
+                  threshold_key,
+                  threshold_value
+              } = req.body;
+
+
+              const allowed = new Set([
+                  'LOW_STOCK_PERCENT',
+                  'REVENUE_DROP_PERCENT',
+                  'PROFIT_DROP_PERCENT'
+              ]);
+
+
+              if (
+                  !allowed.has(
+                      threshold_key
+                  )
+              ) {
+
+                  return res.status(400).json({
+                      success: false,
+                      error:
+                          'Unknown alert threshold.'
+                  });
+              }
+
+
+              const value =
+                  Number(
+                      threshold_value
+                  );
+
+
+              if (
+                  !Number.isFinite(value)
+                  || value < 0
+                  || value > 100
+              ) {
+
+                  return res.status(400).json({
+                      success: false,
+                      error:
+                          'Threshold must be between 0 and 100.'
+                  });
+              }
+
+
+              db.prepare(`
+                  UPDATE alert_thresholds
+
+                  SET threshold_value = ?
+
+                  WHERE threshold_key = ?
+              `).run(
+                  value,
+                  threshold_key
+              );
+
+
+              // Immediately re-check alerts using
+              // the new user-defined threshold.
+              runAlertDetection();
+
+
+              res.json({
+                  success: true
+              });
+          }
+      )
+);
+
+
+// ------------------------------------------------------------
+// Run detection + return active alerts
+// ------------------------------------------------------------
+
+app.get(
+  '/api/alerts/active',
+  (req, res) =>
+      safeRoute(
+          res,
+          () => {
+
+              runAlertDetection();
+
+
+              const rows =
+                  db.prepare(`
+                      SELECT
+                          alert_id,
+                          alert_type,
+                          entity_key,
+                          title,
+                          message,
+                          current_value,
+                          threshold_value,
+                          severity,
+                          status,
+                          created_at
+
+                      FROM alerts
+
+                      WHERE status = 'ACTIVE'
+
+                      ORDER BY
+                          CASE severity
+                              WHEN 'CRITICAL' THEN 1
+                              WHEN 'WARNING' THEN 2
+                              ELSE 3
+                          END,
+                          created_at DESC
+                  `).all();
+
+
+              res.json({
+                  success: true,
+                  data: rows
+              });
+          }
+      )
+);
+
+
+// ------------------------------------------------------------
+// Manually run alert detection
+// ------------------------------------------------------------
+
+app.post(
+  '/api/alerts/detect',
+  (req, res) =>
+      safeRoute(
+          res,
+          () => {
+
+              runAlertDetection();
+
+
+              const count =
+                  db.prepare(`
+                      SELECT COUNT(*) AS count
+                      FROM alerts
+                      WHERE status = 'ACTIVE'
+                  `).get().count;
+
+
+              res.json({
+                  success: true,
+                  active_alerts: count
+              });
+          }
+      )
+);
 // ============================================================
 // MARKETING DRILL-DOWN
 // ============================================================

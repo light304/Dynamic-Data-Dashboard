@@ -178,14 +178,6 @@ content.add(alerts, "Alerts");
         }
     }
 
-    private JPanel placeholder(String title, String message) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BACKGROUND);
-        panel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
-        panel.add(new JLabel("<html><h1>" + title + "</h1><p>" + message + "</p></html>"), BorderLayout.NORTH);
-        return panel;
-    }
-
     private void uploadCsv() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Select a CSV file");
