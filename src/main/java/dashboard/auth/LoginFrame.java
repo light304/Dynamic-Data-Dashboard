@@ -1,5 +1,6 @@
 package dashboard.auth;
 import dashboard.gui.DashboardFrame;
+import dashboard.gui.Theme;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -19,7 +20,7 @@ import java.awt.event.*;
  */
 public class LoginFrame extends JFrame {
 
-    // Palette 
+    // Palette
     private static final Color BG          = new Color(0x0D1B2A);
     private static final Color CARD_BG     = new Color(0x1B2A3B);
     private static final Color CARD_BORDER = new Color(0x1E3A5F);
@@ -34,7 +35,7 @@ public class LoginFrame extends JFrame {
     private static final Color ERROR       = new Color(0xFF5252);
     private static final Color SUCCESS     = new Color(0x69F0AE);
 
-    // Component references 
+    // Component references
     private JTextField     usernameField;
     private JPasswordField passwordField;
     private JButton        signInBtn;
@@ -43,7 +44,7 @@ public class LoginFrame extends JFrame {
 
     private final AuthService authService;
 
-    // Constructor 
+    // Constructor
     public LoginFrame(AuthService authService) {
         this.authService = authService;
         setupFrame();
@@ -51,7 +52,7 @@ public class LoginFrame extends JFrame {
         getRootPane().setDefaultButton(signInBtn);   // Enter key triggers login
     }
 
-    // Frame setup 
+    // Frame setup
     private void setupFrame() {
         setTitle("Dynamic Data Dashboard - Sign In");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -62,7 +63,7 @@ public class LoginFrame extends JFrame {
         setLayout(new BorderLayout());
     }
 
-    // UI construction 
+    // UI construction
     private void buildUI() {
         // Centre the card vertically and horizontally
         JPanel wrapper = new JPanel(new GridBagLayout());
@@ -103,7 +104,7 @@ public class LoginFrame extends JFrame {
         errorArea.setFocusable(false);
         errorArea.setOpaque(false);
         errorArea.setBorder(null);
-        errorArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        errorArea.setFont(Theme.SMALL);
         errorArea.setForeground(ERROR);
         errorArea.setAlignmentX(Component.LEFT_ALIGNMENT);
         errorArea.setMinimumSize(new Dimension(320, 54));
@@ -117,7 +118,7 @@ public class LoginFrame extends JFrame {
         card.add(vGap(14));
 
         // Status line (shows "Welcome, ..." on success)
-        statusLabel = styledLabel(" ", 13, TEXT_MUTED);
+        statusLabel = styledLabel(" ", TEXT_MUTED);
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         statusLabel.setMinimumSize(new Dimension(320, 22));
         statusLabel.setPreferredSize(new Dimension(320, 22));
@@ -127,14 +128,19 @@ public class LoginFrame extends JFrame {
         return card;
     }
 
-    // Header (icon + title) 
+    // Header (icon + title)
     private JPanel buildHeader() {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(CARD_BG);
         p.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Hex-diamond icon rendered via Unicode
+        /*
+         * Hex-diamond icon rendered via Unicode.
+         *
+         * Deliberately NOT a Theme font: U+2B21 is not in every family,
+         * and Segoe UI Symbol is what stops it rendering as an empty box.
+         */
         JLabel icon = new JLabel("⬡", SwingConstants.CENTER);
         icon.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 42));
         icon.setForeground(ACCENT);
@@ -144,7 +150,7 @@ public class LoginFrame extends JFrame {
         p.add(vGap(8));
 
         JLabel title = new JLabel("Dynamic Data Dashboard", SwingConstants.CENTER);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setFont(Theme.SECTION);
         title.setForeground(TEXT_WHITE);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         p.add(title);
@@ -152,7 +158,7 @@ public class LoginFrame extends JFrame {
         p.add(vGap(4));
 
         JLabel sub = new JLabel("Online Retail  ·  Business Intelligence", SwingConstants.CENTER);
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        sub.setFont(Theme.SMALL);
         sub.setForeground(TEXT_MUTED);
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
         p.add(sub);
@@ -168,10 +174,10 @@ public class LoginFrame extends JFrame {
         return p;
     }
 
-    // Field helpers 
+    // Field helpers
     private JLabel fieldLabel(String text) {
         JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lbl.setFont(Theme.SMALL_BOLD);
         lbl.setForeground(TEXT_MUTED);
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         return lbl;
@@ -191,7 +197,7 @@ public class LoginFrame extends JFrame {
     }
 
     private void styleField(JTextField f) {
-        f.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        f.setFont(Theme.BODY);
         f.setForeground(TEXT_WHITE);
         f.setBackground(FIELD_BG);
         f.setCaretColor(ACCENT);
@@ -212,7 +218,7 @@ public class LoginFrame extends JFrame {
                 new EmptyBorder(10, 14, 10, 14));
     }
 
-    // Sign-In button (gradient paint) 
+    // Sign-In button (gradient paint)
     private JButton buildSignInButton() {
         JButton btn = new JButton("SIGN  IN") {
             @Override
@@ -230,7 +236,7 @@ public class LoginFrame extends JFrame {
                 super.paintComponent(g);
             }
         };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFont(Theme.BODY_STRONG);
         btn.setForeground(TEXT_WHITE);
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
@@ -244,20 +250,25 @@ public class LoginFrame extends JFrame {
         return btn;
     }
 
-    // Footer 
+    // Footer
     private JPanel buildFooter() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.CENTER));
         p.setBackground(BG);
         p.setBorder(new EmptyBorder(0, 0, 10, 0));
+
+        /*
+         * Shortened: the previous string was about 79 characters, which
+         * no longer fits the 480px window at 13pt and was being clipped.
+         */
         JLabel lbl = new JLabel(
-                "© 2026 AUT Dynamic Data Dashboard  ·  v1.0 - PROTOTYPE ·  Offline Localhost App");
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                "© 2026 AUT Dynamic Data Dashboard  ·  v1.0 Prototype");
+        lbl.setFont(Theme.SMALL);
         lbl.setForeground(new Color(0x3A556A));
         p.add(lbl);
         return p;
     }
 
-    // Authentication flow 
+    // Authentication flow
     private void performLogin() {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
@@ -309,13 +320,13 @@ public class LoginFrame extends JFrame {
         worker.execute();
     }
 
-    //  Post-login 
+    //  Post-login
     private void openDashboard(UserSession session) {
         dispose();
         SwingUtilities.invokeLater(() -> new DashboardFrame().setVisible(true));
     }
 
-    // UI helpers 
+    // UI helpers
     private void showError(String message) {
         errorArea.setText(message);
         shakeWindow();
@@ -348,9 +359,9 @@ public class LoginFrame extends JFrame {
         t.start();
     }
 
-    private JLabel styledLabel(String text, int size, Color color) {
+    private JLabel styledLabel(String text, Color color) {
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, size));
+        l.setFont(Theme.SMALL);
         l.setForeground(color);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;

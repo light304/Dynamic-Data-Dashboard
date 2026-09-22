@@ -43,15 +43,11 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
         titleArea.setLayout(new BoxLayout(titleArea, BoxLayout.Y_AXIS));
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(
-                new Font("SansSerif", Font.BOLD, 28)
-        );
+        titleLabel.setFont(Theme.PAGE_TITLE);
         titleLabel.setForeground(PRIMARY);
 
         JLabel subtitleLabel = new JLabel(subtitle);
-        subtitleLabel.setFont(
-                new Font("SansSerif", Font.PLAIN, 13)
-        );
+        subtitleLabel.setFont(Theme.BODY);
         subtitleLabel.setForeground(SECONDARY);
 
         titleArea.add(titleLabel);
@@ -61,9 +57,7 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
         /*
          * REFRESH BUTTON
          */
-        refreshButton.setFont(
-                new Font("SansSerif", Font.BOLD, 13)
-        );
+        refreshButton.setFont(Theme.BODY_STRONG);
 
         refreshButton.setForeground(Color.WHITE);
         refreshButton.setBackground(ACCENT);
@@ -186,17 +180,20 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
          * Give every chart a consistent dashboard height.
          *
          * Width is handled automatically by GridLayout.
+         *
+         * Heights allow for the larger axis and tick fonts - smaller
+         * cards squeezed the plot area once the text grew.
          */
         for (Component component : charts.getComponents()) {
 
             if (component instanceof JComponent card) {
 
                 card.setPreferredSize(
-                        new Dimension(450, 310)
+                        new Dimension(450, 360)
                 );
 
                 card.setMinimumSize(
-                        new Dimension(300, 280)
+                        new Dimension(320, 330)
                 );
             }
         }

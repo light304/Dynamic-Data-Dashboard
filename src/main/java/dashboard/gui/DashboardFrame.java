@@ -87,26 +87,29 @@ public class DashboardFrame extends JFrame {
     /** Recreates the original dark branding block above the sidebar. */
     private JPanel createTopPanel() {
         JPanel top = new JPanel(new BorderLayout());
-        top.setPreferredSize(new Dimension(0, 85));
+
+        // 100 rather than 85: two BRAND lines plus the SMALL subtitle no
+        // longer fit in 85px once the fonts were raised.
+        top.setPreferredSize(new Dimension(0, 100));
         top.setBackground(BACKGROUND);
 
         JPanel logo = new JPanel();
         logo.setLayout(new BoxLayout(logo, BoxLayout.Y_AXIS));
-        logo.setPreferredSize(new Dimension(210, 85));
+        logo.setPreferredSize(new Dimension(210, 100));
         logo.setBackground(SIDEBAR);
         logo.setBorder(BorderFactory.createEmptyBorder(17, 18, 15, 18));
 
         JLabel line1 = new JLabel("Dynamic Retail");
         line1.setForeground(Color.WHITE);
-        line1.setFont(new Font("SansSerif", Font.BOLD, 18));
+        line1.setFont(Theme.BRAND);
 
         JLabel line2 = new JLabel("Dashboard");
         line2.setForeground(ACTIVE);
-        line2.setFont(new Font("SansSerif", Font.BOLD, 18));
+        line2.setFont(Theme.BRAND);
 
         JLabel sub = new JLabel("Admin Dashboard");
         sub.setForeground(new Color(170, 180, 195));
-        sub.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        sub.setFont(Theme.SMALL);
 
         logo.add(line1);
         logo.add(line2);
@@ -143,7 +146,7 @@ public class DashboardFrame extends JFrame {
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
         content.add(reports, "Reports");
-        
+
         if (UserSession.getInstance().isManager()) {
             AlertsPanel alerts = new AlertsPanel();
             content.add(alerts, "Alerts");

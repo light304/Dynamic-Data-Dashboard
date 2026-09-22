@@ -25,7 +25,7 @@ public class ProfitMarginOverTimeChart extends JPanel {
         ));
         chartHost.setBackground(BACKGROUND);
         add(chartHost, BorderLayout.CENTER);
-        status.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        status.setFont(Theme.SMALL);
         status.setForeground(new Color(100, 116, 139));
         add(status, BorderLayout.SOUTH);
     }

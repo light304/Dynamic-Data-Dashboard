@@ -266,11 +266,7 @@ public static JPanel pie(
     );
 
     plot.setLabelFont(
-            new Font(
-                    "SansSerif",
-                    Font.PLAIN,
-                    11
-            )
+            Theme.SMALL
     );
 
     plot.setLabelPaint(TEXT);
@@ -364,11 +360,7 @@ public static JPanel pie(
             );
 
     hint.setFont(
-            new Font(
-                    "SansSerif",
-                    Font.PLAIN,
-                    10
-            )
+            Theme.SMALL
     );
 
     hint.setForeground(
@@ -456,38 +448,22 @@ public static JPanel pie(
         if (plot.getDomainAxis() != null) {
 
             plot.getDomainAxis().setLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.BOLD,
-                            11
-                    )
+                    Theme.AXIS_LABEL
             );
 
             plot.getDomainAxis().setTickLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.PLAIN,
-                            10
-                    )
+                    Theme.AXIS_TICK
             );
         }
 
         if (plot.getRangeAxis() != null) {
 
             plot.getRangeAxis().setLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.BOLD,
-                            11
-                    )
+                    Theme.AXIS_LABEL
             );
 
             plot.getRangeAxis().setTickLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.PLAIN,
-                            10
-                    )
+                    Theme.AXIS_TICK
             );
         }
 
@@ -517,11 +493,7 @@ public static JPanel pie(
         JLabel heading = new JLabel(title);
 
         heading.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        17
-                )
+                Theme.CHART_TITLE
         );
 
         heading.setForeground(TEXT);
@@ -533,11 +505,7 @@ public static JPanel pie(
         );
 
         body.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        13
-                )
+                Theme.BODY
         );
 
         body.setForeground(SECONDARY_TEXT);
@@ -627,11 +595,7 @@ public static JPanel pie(
                 );
 
         expandHint.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         expandHint.setForeground(
@@ -784,11 +748,7 @@ public static JPanel pie(
                 new JLabel(title);
 
         heading.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        20
-                )
+                Theme.SECTION
         );
 
         heading.setForeground(TEXT);
@@ -799,11 +759,7 @@ public static JPanel pie(
                 );
 
         subtitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         subtitle.setForeground(
@@ -826,11 +782,7 @@ public static JPanel pie(
                 new JButton("Close");
 
         closeButton.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        12
-                )
+                Theme.SMALL_BOLD
         );
 
         closeButton.setForeground(
@@ -1072,11 +1024,7 @@ public static JPanel pie(
         if (domainAxis != null) {
 
             domainAxis.setLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.BOLD,
-                            11
-                    )
+                    Theme.AXIS_LABEL
             );
 
             domainAxis.setLabelPaint(
@@ -1084,11 +1032,7 @@ public static JPanel pie(
             );
 
             domainAxis.setTickLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.PLAIN,
-                            9
-                    )
+                    Theme.AXIS_TICK
             );
 
             domainAxis.setTickLabelPaint(
@@ -1127,11 +1071,7 @@ public static JPanel pie(
         ) {
 
             rangeAxis.setLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.BOLD,
-                            11
-                    )
+                    Theme.AXIS_LABEL
             );
 
             rangeAxis.setLabelPaint(
@@ -1139,11 +1079,7 @@ public static JPanel pie(
             );
 
             rangeAxis.setTickLabelFont(
-                    new Font(
-                            "SansSerif",
-                            Font.PLAIN,
-                            9
-                    )
+                    Theme.AXIS_TICK
             );
 
             rangeAxis.setTickLabelPaint(
@@ -1200,11 +1136,7 @@ public static JPanel pie(
             chart
                     .getTitle()
                     .setFont(
-                            new Font(
-                                    "SansSerif",
-                                    Font.BOLD,
-                                    17
-                            )
+                            Theme.CHART_TITLE
                     );
 
             chart
@@ -1228,11 +1160,7 @@ public static JPanel pie(
             chart
                     .getLegend()
                     .setItemFont(
-                            new Font(
-                                    "SansSerif",
-                                    Font.PLAIN,
-                                    10
-                            )
+                            Theme.LEGEND
                     );
 
             chart

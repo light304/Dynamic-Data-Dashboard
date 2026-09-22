@@ -24,7 +24,7 @@ public class QuantityRevenueScatterChart extends JPanel {
         ));
         chartHost.setBackground(Color.WHITE);
         add(chartHost, BorderLayout.CENTER);
-        status.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        status.setFont(Theme.SMALL);
         status.setForeground(new Color(100, 116, 139));
         add(status, BorderLayout.SOUTH);
     }

@@ -39,7 +39,7 @@ public class SidebarPanel extends JPanel {
         for (String page : pages) {
             addButton(nav, page, "Overview".equals(page));
         }
-        
+
         add(nav,BorderLayout.NORTH);
 
         // Upload CSV Button
@@ -49,7 +49,7 @@ public class SidebarPanel extends JPanel {
         upload.setOpaque(true);
         upload.setBackground(new Color(30, 41, 59));
         upload.setForeground(Color.WHITE);
-        upload.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        upload.setFont(Theme.BODY);
         upload.setPreferredSize(new Dimension(174, 38));
         upload.setToolTipText("Load products, customers, marketing, inventory or sales data from a CSV file");
         upload.addActionListener(e -> onUpload.run());
@@ -61,18 +61,29 @@ public class SidebarPanel extends JPanel {
         logout.setOpaque(true);
         logout.setBackground(new Color(55, 65, 81));
         logout.setForeground(Color.WHITE);
-        logout.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        logout.setFont(Theme.BODY);
         logout.setPreferredSize(new Dimension(174, 34));
         logout.setToolTipText("Sign out and return to the login screen");
         logout.addActionListener(e -> onLogout.run());
 
         UserSession session = UserSession.getInstance();
-        JLabel who = new JLabel(session.getFullName() == null
-                ? " "
-                : session.getFullName() + "  ·  " + session.getRoleName());
+
+        JLabel who = new JLabel();
+
+        if (session.getFullName() == null) {
+            who.setText(" ");
+        } else {
+            who.setText(
+                    "<html><div style='width:174px'>"
+                    + "Signed in as: " + session.getFullName()
+                    + "<br>Access Level: " + session.getRoleName()
+                    + "</div></html>"
+            );
+        }
+
         who.setForeground(new Color(148, 163, 184));
-        who.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        who.setHorizontalAlignment(SwingConstants.CENTER);
+        who.setFont(Theme.SMALL);
+        who.setHorizontalAlignment(SwingConstants.LEFT);
 
         JPanel bottom = new JPanel();
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
@@ -95,7 +106,7 @@ public class SidebarPanel extends JPanel {
         button.setOpaque(true);
         button.setBackground(active?ACTIVE:SIDEBAR);
         button.setForeground(Color.WHITE);
-        button.setFont(new Font("SansSerif",Font.PLAIN,14));
+        button.setFont(Theme.BODY);
         button.setPreferredSize(new Dimension(174,40));
         button.setMaximumSize(new Dimension(174,40));
         button.setHorizontalAlignment(SwingConstants.LEFT);

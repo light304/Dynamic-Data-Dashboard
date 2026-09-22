@@ -48,25 +48,66 @@ public class KpiPanel extends JPanel {
             new JLabel("Loading...");
 
     private final JLabel revenueDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel growthDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel profitDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel marginDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel turnoverDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel retentionDelta =
-            new JLabel("--");
+            new JLabel("");
 
     private final JLabel costPerConversionDelta =
-            new JLabel("--");
+            new JLabel("");
+
+    /*
+     * The card panels are kept so that update() can put the calculation
+     * provenance into each card's tooltip once the flags are known.
+     */
+    private JPanel revenueCard;
+    private JPanel growthCard;
+    private JPanel profitCard;
+    private JPanel marginCard;
+    private JPanel turnoverCard;
+    private JPanel retentionCard;
+    private JPanel costPerConversionCard;
+
+    // =========================================================
+    // CARD DESCRIPTIONS
+    //
+    // Plain-English explanation of each indicator, shown on the
+    // card itself. Reword these freely - they are the only place
+    // the wording lives.
+    // =========================================================
+
+    private static final String REVENUE_DESC =
+            "The total sales income (money earned) for the selected period, before costs are deducted.";
+
+    private static final String GROWTH_DESC =
+            "The percentage change in revenue against the preceding period of equal length.";
+
+    private static final String PROFIT_DESC =
+            "The revenue remaining after cost of goods sold and marketing spend.";
+
+    private static final String MARGIN_DESC =
+            "The gross profit expressed as a percentage of revenue, before marketing.";
+
+    private static final String TURNOVER_DESC =
+            "The number of times average inventory was sold through during the period.";
+
+    private static final String RETENTION_DESC =
+            "The proportion of pre-existing customers who purchased again in the period.";
+
+    private static final String COST_PER_CONVERSION_DESC =
+            "The average marketing spend required to secure one conversion.";
 
     public KpiPanel() {
 
@@ -88,61 +129,62 @@ public class KpiPanel extends JPanel {
 
     private void createCards() {
 
-        add(
-                createCard(
-                        "Total Revenue",
-                        revenueValue,
-                        revenueDelta
-                )
+        revenueCard = createCard(
+                "Total Revenue",
+                revenueValue,
+                REVENUE_DESC,
+                revenueDelta
         );
 
-        add(
-                createCard(
-                        "Revenue Growth Rate",
-                        growthValue,
-                        growthDelta
-                )
+        growthCard = createCard(
+                "Revenue Growth Rate",
+                growthValue,
+                GROWTH_DESC,
+                growthDelta
         );
 
-        add(
-                createCard(
-                        "Profit (Net)",
-                        profitValue,
-                        profitDelta
-                )
+        profitCard = createCard(
+                "Profit (Net)",
+                profitValue,
+                PROFIT_DESC,
+                profitDelta
         );
 
-        add(
-                createCard(
-                        "Gross Profit Margin",
-                        marginValue,
-                        marginDelta
-                )
+        marginCard = createCard(
+                "Gross Profit Margin",
+                marginValue,
+                MARGIN_DESC,
+                marginDelta
         );
 
-        add(
-                createCard(
-                        "Inventory Turnover",
-                        turnoverValue,
-                        turnoverDelta
-                )
+        turnoverCard = createCard(
+                "Inventory Turnover",
+                turnoverValue,
+                TURNOVER_DESC,
+                turnoverDelta
         );
 
-        add(
-                createCard(
-                        "Customer Retention",
-                        retentionValue,
-                        retentionDelta
-                )
+        retentionCard = createCard(
+                "Customer Retention",
+                retentionValue,
+                RETENTION_DESC,
+                retentionDelta
         );
 
-        add(
-                createCard(
-                        "Cost per Conversion",
-                        costPerConversionValue,
-                        costPerConversionDelta
-                )
+        costPerConversionCard = createCard(
+                "Cost per Conversion",
+                costPerConversionValue,
+                COST_PER_CONVERSION_DESC,
+                costPerConversionDelta
         );
+
+        add(revenueCard);
+        add(growthCard);
+        add(profitCard);
+        add(marginCard);
+        add(turnoverCard);
+        add(retentionCard);
+        add(costPerConversionCard);
 
         JPanel emptyPanel =
                 new JPanel();
@@ -157,6 +199,7 @@ public class KpiPanel extends JPanel {
     private JPanel createCard(
             String title,
             JLabel valueLabel,
+            String description,
             JLabel deltaLabel
     ) {
 
@@ -194,11 +237,7 @@ public class KpiPanel extends JPanel {
                 );
 
         titleLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.BODY
         );
 
         titleLabel.setForeground(
@@ -210,11 +249,7 @@ public class KpiPanel extends JPanel {
         );
 
         valueLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        19
-                )
+                Theme.CARD_VALUE
         );
 
         valueLabel.setForeground(
@@ -225,12 +260,35 @@ public class KpiPanel extends JPanel {
                 Component.LEFT_ALIGNMENT
         );
 
+        /*
+         * JTextArea rather than JLabel: a JLabel will not wrap plain
+         * text, and the HTML-in-JLabel alternative behaves badly inside
+         * a fixed-size BoxLayout cell.
+         */
+        JTextArea descriptionArea =
+                new JTextArea(description);
+
+        descriptionArea.setFont(
+                Theme.SMALL
+        );
+
+        descriptionArea.setForeground(
+                SECONDARY_TEXT
+        );
+
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setEditable(false);
+        descriptionArea.setFocusable(false);
+        descriptionArea.setOpaque(false);
+        descriptionArea.setBorder(null);
+
+        descriptionArea.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
         deltaLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        11
-                )
+                Theme.SMALL
         );
 
         deltaLabel.setForeground(
@@ -253,7 +311,15 @@ public class KpiPanel extends JPanel {
 
         card.add(
                 Box.createVerticalStrut(
-                        5
+                        6
+                )
+        );
+
+        card.add(descriptionArea);
+
+        card.add(
+                Box.createVerticalStrut(
+                        6
                 )
         );
 
@@ -265,8 +331,10 @@ public class KpiPanel extends JPanel {
 
     /**
      * Updates all seven Overview cards from the analytics backend.
-     * The lower line on each card shows the table(s) touched so solo/cross
-     * logic is visible without changing the original card layout.
+     *
+     * The tables each figure touches, and any region caveat, go into the
+     * card's tooltip rather than onto the card, so the delta line stays
+     * free for the period-on-period arrows.
      */
     public void update(Kpis kpis) {
         revenueValue.setText(String.format("$%,.2f", kpis.revenue()));
@@ -280,27 +348,49 @@ public class KpiPanel extends JPanel {
         retentionValue.setText(String.format("%.2f%%", kpis.retention()));
         costPerConversionValue.setText(String.format("$%,.2f", kpis.costPerConversion()));
 
-        revenueDelta.setText("Calculation: sales");
-        growthDelta.setText("Calculation: sales");
-        profitDelta.setText(
-                "<html><div style='width:160px'>Calculation: sales + products"
-                + (kpis.profitIncludesMarketing() ? " − marketing" : " (gross — marketing has no region)")
-                + "</div></html>"
-        );
-        marginDelta.setText("Calculation: sales + products");
-        turnoverDelta.setText(
-                "<html><div style='width:160px'>Calculation: inventory + products + sales"
-                + (kpis.turnoverRegionIgnored() ? " (national — inventory has no region)" : "")
-                + "</div></html>"
-        );
-        retentionDelta.setText("Calculation: customers + sales");
-        costPerConversionDelta.setText(
-                "<html><div style='width:160px'>Calculation: marketing </div></html>"
-        );
+        tooltip(revenueCard, REVENUE_DESC,
+                "Calculation: sales");
 
-        for (JLabel label : new JLabel[]{revenueDelta, growthDelta, profitDelta, marginDelta, turnoverDelta, retentionDelta, costPerConversionDelta}) {
-            label.setForeground(SECONDARY_TEXT);
-        }
+        tooltip(growthCard, GROWTH_DESC,
+                "Calculation: sales");
+
+        tooltip(profitCard, PROFIT_DESC,
+                "Calculation: sales + products"
+                + (kpis.profitIncludesMarketing()
+                        ? " − marketing"
+                        : " (gross — marketing has no region)"));
+
+        tooltip(marginCard, MARGIN_DESC,
+                "Calculation: sales + products");
+
+        tooltip(turnoverCard, TURNOVER_DESC,
+                "Calculation: inventory + products + sales"
+                + (kpis.turnoverRegionIgnored()
+                        ? " (national — inventory has no region)"
+                        : ""));
+
+        tooltip(retentionCard, RETENTION_DESC,
+                "Calculation: customers + sales");
+
+        tooltip(costPerConversionCard, COST_PER_CONVERSION_DESC,
+                "Calculation: marketing");
+    }
+
+    /**
+     * Builds a two-line tooltip: the plain-English description, then the
+     * tables the figure is derived from.
+     */
+    private void tooltip(JPanel card, String description, String calculation) {
+
+        if (card == null) return;
+
+        card.setToolTipText(
+                "<html><div style='width:260px'>"
+                + description
+                + "<br><br><i>"
+                + calculation
+                + "</i></div></html>"
+        );
     }
 
     public void showError() {
@@ -312,5 +402,11 @@ public class KpiPanel extends JPanel {
         turnoverValue.setText("Unavailable");
         retentionValue.setText("Unavailable");
         costPerConversionValue.setText("Unavailable");
+
+        for (JLabel label : new JLabel[]{
+                revenueDelta, growthDelta, profitDelta, marginDelta,
+                turnoverDelta, retentionDelta, costPerConversionDelta}) {
+            label.setText("");
+        }
     }
 }

@@ -97,11 +97,7 @@ public class RevenueByRegionChart extends JPanel {
                 );
 
         title.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        17
-                )
+                Theme.CHART_TITLE
         );
 
         title.setForeground(
@@ -118,11 +114,7 @@ public class RevenueByRegionChart extends JPanel {
                 );
 
         description.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         description.setForeground(
@@ -241,11 +233,7 @@ public class RevenueByRegionChart extends JPanel {
         );
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         add(

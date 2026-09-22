@@ -1,8 +1,8 @@
-//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category, 
-// and view the detailed records behind that summary. Instead of only seeing aggregated values, 
-// users can inspect the individual sales transactions that contributed to the chart. 
-// The existing dashboard filters, such as year, period, 
-// and region, are carried into the drill-down so the displayed data remains relevant to the current view. 
+//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category,
+// and view the detailed records behind that summary. Instead of only seeing aggregated values,
+// users can inspect the individual sales transactions that contributed to the chart.
+// The existing dashboard filters, such as year, period,
+// and region, are carried into the drill-down so the displayed data remains relevant to the current view.
 // Double-clicking is kept separate and is used to expand the chart, while a single click opens the detailed data table.
 
 package dashboard.gui;
@@ -82,17 +82,25 @@ public class RevenueChartPanel extends JPanel {
 
         setBackground(Color.WHITE);
 
+        /*
+         * Taller than before: the title, description, status line and
+         * hint all grew with the larger fonts, and the plot area was
+         * being squeezed out at 220px.
+         *
+         * These must stay in step with the sizes OverviewPanel applies
+         * to the other cards in the same grid.
+         */
         setPreferredSize(
                 new Dimension(
                         420,
-                        220
+                        260
                 )
         );
 
         setMinimumSize(
                 new Dimension(
                         280,
-                        200
+                        230
                 )
         );
 
@@ -208,11 +216,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         statusLabel.setForeground(
@@ -226,11 +230,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         hint.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        9
-                )
+                Theme.SMALL
         );
 
         hint.setForeground(
@@ -460,11 +460,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         chartTitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        15
-                )
+                Theme.SUBHEAD
         );
 
         chartTitle.setForeground(
@@ -481,11 +477,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         description.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         description.setForeground(
@@ -562,11 +554,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         title.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        20
-                )
+                Theme.SECTION
         );
 
         title.setForeground(
@@ -1124,20 +1112,12 @@ public class RevenueChartPanel extends JPanel {
 
         plot.getDomainAxis()
                 .setTickLabelFont(
-                        new Font(
-                                "SansSerif",
-                                Font.PLAIN,
-                                9
-                        )
+                        Theme.AXIS_TICK
                 );
 
         plot.getRangeAxis()
                 .setTickLabelFont(
-                        new Font(
-                                "SansSerif",
-                                Font.PLAIN,
-                                9
-                        )
+                        Theme.AXIS_TICK
                 );
 
         BarRenderer renderer =
