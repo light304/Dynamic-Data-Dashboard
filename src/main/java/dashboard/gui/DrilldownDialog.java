@@ -264,16 +264,14 @@ public final class DrilldownDialog {
         showNonModalWindow(parent, title, scroll);
     }
 
+
     private static void showNonModalWindow(
             Component parent,
             String title,
             JComponent content
     ) {
 
-        Window owner = SwingUtilities.getWindowAncestor(parent);
-
-        JDialog dialog =
-                new JDialog(owner, title, Dialog.ModalityType.MODELESS);
+        JFrame dialog = new JFrame(title);
 
         dialog.setDefaultCloseOperation(
                 WindowConstants.DISPOSE_ON_CLOSE
