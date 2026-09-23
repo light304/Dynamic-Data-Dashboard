@@ -3,6 +3,7 @@ package dashboard.gui;
 import dashboard.database.AnalyticsApi;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.Map;
@@ -260,13 +261,41 @@ public final class DrilldownDialog {
                 )
         );
 
+        showNonModalWindow(parent, title, scroll);
+    }
 
-        JOptionPane.showMessageDialog(
-                parent,
-                scroll,
-                title,
-                JOptionPane.PLAIN_MESSAGE
+    private static void showNonModalWindow(
+            Component parent,
+            String title,
+            JComponent content
+    ) {
+
+        Window owner = SwingUtilities.getWindowAncestor(parent);
+
+        JDialog dialog =
+                new JDialog(owner, title, Dialog.ModalityType.MODELESS);
+
+        dialog.setDefaultCloseOperation(
+                WindowConstants.DISPOSE_ON_CLOSE
         );
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(content, BorderLayout.CENTER);
+
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttonPanel =
+                new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        buttonPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.getRootPane().setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
     }
 
 
