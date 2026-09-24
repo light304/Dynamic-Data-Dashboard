@@ -26,17 +26,10 @@ import java.util.Map;
 
 public class RevenueOverTimeChart extends JPanel {
 
-    private static final Color ACTIVE_COLOR =
-            new Color(0, 212, 255);
-
-    private static final Color PRIMARY_TEXT =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY_TEXT =
-            new Color(100, 116, 139);
-
-    private static final Color BORDER_COLOR =
-            new Color(226, 232, 240);
+    private static final Color ACTIVE_COLOR   = Theme.SERIES_1;
+    private static final Color PRIMARY_TEXT   = Theme.TEXT;
+    private static final Color SECONDARY_TEXT = Theme.TEXT_MUTED;
+    private static final Color BORDER_COLOR   = Theme.BORDER;
 
     private DefaultCategoryDataset dataset;
 
@@ -100,11 +93,7 @@ public class RevenueOverTimeChart extends JPanel {
                 );
 
         title.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        17
-                )
+                Theme.CHART_TITLE
         );
 
         title.setForeground(
@@ -121,11 +110,7 @@ public class RevenueOverTimeChart extends JPanel {
                 );
 
         description.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         description.setForeground(
@@ -238,11 +223,7 @@ public class RevenueOverTimeChart extends JPanel {
                 );
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         statusLabel.setForeground(

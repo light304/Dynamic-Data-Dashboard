@@ -13,17 +13,10 @@ import java.util.Map;
 public class OverviewPanel extends JPanel
         implements FilterableDashboardPage {
 
-    private static final Color BACKGROUND =
-            new Color(245, 247, 250);
-
-    private static final Color PRIMARY =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY =
-            new Color(100, 116, 139);
-
-    private static final Color ACCENT =
-            new Color(0, 188, 225);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
+    private static final Color PRIMARY    = Theme.TEXT;
+    private static final Color SECONDARY  = Theme.TEXT_MUTED;
+    private static final Color ACCENT     = Theme.ACCENT;
 
     private final KpiPanel kpiPanel =
             new KpiPanel();
@@ -122,10 +115,14 @@ public class OverviewPanel extends JPanel
                 Component.LEFT_ALIGNMENT
         );
 
+        /*
+         * 52 rather than 42: the heading and its subtitle both grew
+         * with the larger fonts and no longer fit in 42px.
+         */
         analyticsHeader.setMaximumSize(
                 new Dimension(
                         Integer.MAX_VALUE,
-                        42
+                        52
                 )
         );
 
@@ -149,11 +146,7 @@ public class OverviewPanel extends JPanel
                 );
 
         analyticsTitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        18
-                )
+                Theme.SECTION
         );
 
         analyticsTitle.setForeground(PRIMARY);
@@ -161,15 +154,11 @@ public class OverviewPanel extends JPanel
 
         JLabel analyticsSubtitle =
                 new JLabel(
-                        "Key sales, inventory and marketing performance"
+                        "Key customer, sales, inventory, products and marketing information graphed and displayed for the selected period"
                 );
 
         analyticsSubtitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        11
-                )
+                Theme.SMALL
         );
 
         analyticsSubtitle.setForeground(
@@ -332,11 +321,7 @@ public class OverviewPanel extends JPanel
                 );
 
         title.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        28
-                )
+                Theme.PAGE_TITLE
         );
 
         title.setForeground(PRIMARY);
@@ -344,15 +329,11 @@ public class OverviewPanel extends JPanel
 
         JLabel subtitle =
                 new JLabel(
-                        "Business performance overview using the dashboard-wide filters"
+                        "A business insight overview of retail operations across customers, sales, products, inventory and marketing for the selected period"
                 );
 
         subtitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        13
-                )
+                Theme.BODY
         );
 
         subtitle.setForeground(
@@ -374,11 +355,7 @@ public class OverviewPanel extends JPanel
         // =====================================================
 
         refreshButton.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        13
-                )
+                Theme.BODY_STRONG
         );
 
         refreshButton.setForeground(
@@ -715,18 +692,22 @@ public class OverviewPanel extends JPanel
                          *
                          * Full-size view is available
                          * by double-clicking.
+                         *
+                         * These must match the sizes set in
+                         * RevenueChartPanel.configurePanel(), which
+                         * shares this grid.
                          */
                         chart.setPreferredSize(
                                 new Dimension(
                                         420,
-                                        220
+                                        260
                                 )
                         );
 
                         chart.setMinimumSize(
                                 new Dimension(
                                         280,
-                                        200
+                                        230
                                 )
                         );
 

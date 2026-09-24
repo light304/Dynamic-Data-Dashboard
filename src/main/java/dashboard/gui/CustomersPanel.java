@@ -7,7 +7,7 @@ import dashboard.database.AnalyticsApi;
 public class CustomersPanel extends BaseAnalyticsPage {
 
     public CustomersPanel() {
-        super("Customers", "Customer acquisition, retention and revenue segments");
+        super("Customers", "The shape of the customer base, and how much of it returns");
         refreshData();
     }
 

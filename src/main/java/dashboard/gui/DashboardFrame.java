@@ -16,18 +16,19 @@ import java.util.Map;
 /**
  * Main application window.
  *
- * The original dashboard structure is intentionally preserved:
- * - branding stays above the left sidebarc
- * - sidebar stays on the left
- * - page content stays in the centre
+ * Layout:
+ * - sidebar on the left, carrying the application branding at its top
+ * - shared filter bar above the page content
+ * - page content in the centre
  *
- * The only new layout feature is the shared filter bar above the page content.
+ * The branding used to sit in a full-width strip across the top of the
+ * window. Only the leftmost 210px of that strip was ever used, so the
+ * remaining ~1100x85 was empty background on every page. The branding now
+ * lives inside SidebarPanel and that strip is gone.
  */
 public class DashboardFrame extends JFrame {
 
-    private static final Color SIDEBAR = new Color(17, 24, 39);
-    private static final Color BACKGROUND = new Color(245, 247, 250);
-    private static final Color ACTIVE = new Color(0, 212, 255);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
 
     private final CardLayout cards = new CardLayout();
     private final JPanel content = new JPanel(cards);
@@ -69,9 +70,7 @@ public class DashboardFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BACKGROUND);
 
-        // ORIGINAL STRUCTURE: the top strip spans the whole window and contains
-        // the dark dashboard branding directly above the sidebar.
-        root.add(createTopPanel(), BorderLayout.NORTH);
+        // The sidebar spans the full window height and carries the branding.
         root.add(new SidebarPanel(this::showPage, this::uploadCsv, this::logout), BorderLayout.WEST);
 
         // The filter is only above the changing page content, not above the sidebar.
@@ -82,39 +81,6 @@ public class DashboardFrame extends JFrame {
 
         root.add(centre, BorderLayout.CENTER);
         setContentPane(root);
-    }
-
-    /** Recreates the original dark branding block above the sidebar. */
-    private JPanel createTopPanel() {
-        JPanel top = new JPanel(new BorderLayout());
-        top.setPreferredSize(new Dimension(0, 85));
-        top.setBackground(BACKGROUND);
-
-        JPanel logo = new JPanel();
-        logo.setLayout(new BoxLayout(logo, BoxLayout.Y_AXIS));
-        logo.setPreferredSize(new Dimension(210, 85));
-        logo.setBackground(SIDEBAR);
-        logo.setBorder(BorderFactory.createEmptyBorder(17, 18, 15, 18));
-
-        JLabel line1 = new JLabel("Dynamic Retail");
-        line1.setForeground(Color.WHITE);
-        line1.setFont(new Font("SansSerif", Font.BOLD, 18));
-
-        JLabel line2 = new JLabel("Dashboard");
-        line2.setForeground(ACTIVE);
-        line2.setFont(new Font("SansSerif", Font.BOLD, 18));
-
-        JLabel sub = new JLabel("Admin Dashboard");
-        sub.setForeground(new Color(170, 180, 195));
-        sub.setFont(new Font("SansSerif", Font.PLAIN, 11));
-
-        logo.add(line1);
-        logo.add(line2);
-        logo.add(Box.createVerticalStrut(3));
-        logo.add(sub);
-        top.add(logo, BorderLayout.WEST);
-
-        return top;
     }
 
     private JPanel createContentArea() {
@@ -143,7 +109,7 @@ public class DashboardFrame extends JFrame {
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
         content.add(reports, "Reports");
-        
+
         if (UserSession.getInstance().isManager()) {
             AlertsPanel alerts = new AlertsPanel();
             content.add(alerts, "Alerts");

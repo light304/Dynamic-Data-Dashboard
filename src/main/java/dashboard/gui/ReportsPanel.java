@@ -16,8 +16,8 @@ import java.time.LocalDate;
 
 public class ReportsPanel extends JPanel implements FilterableDashboardPage {
 
-    private static final Color BACKGROUND = new Color(245, 247, 250);
-    private static final Color PRIMARY = new Color(31, 41, 55);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
+    private static final Color PRIMARY = Theme.TEXT;
 
     private final Map<ReportSection, JCheckBox> boxes = new LinkedHashMap<>();
     private final JLabel periodLabel = new JLabel(" ");
@@ -37,10 +37,10 @@ public class ReportsPanel extends JPanel implements FilterableDashboardPage {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
 
         JLabel title = new JLabel("Reports");
-        title.setFont(new Font("SansSerif", Font.BOLD, 28));
+        title.setFont(Theme.PAGE_TITLE);
         title.setForeground(PRIMARY);
 
-        periodLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        periodLabel.setFont(Theme.BODY);
         periodLabel.setForeground(new Color(100, 116, 139));
 
         heading.add(title);
@@ -53,7 +53,7 @@ public class ReportsPanel extends JPanel implements FilterableDashboardPage {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
         JLabel pick = new JLabel("Choose what to include:");
-        pick.setFont(new Font("SansSerif", Font.BOLD, 14));
+        pick.setFont(Theme.BODY_STRONG);
         pick.setForeground(PRIMARY);
         pick.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(pick);
@@ -188,7 +188,7 @@ public class ReportsPanel extends JPanel implements FilterableDashboardPage {
     private void addGroup(JPanel body, String title, boolean defaults) {
 
         JLabel heading = new JLabel(title);
-        heading.setFont(new Font("SansSerif", Font.BOLD, 12));
+        heading.setFont(Theme.SMALL_BOLD);
         heading.setForeground(new Color(100, 116, 139));
         heading.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(heading);
@@ -199,14 +199,11 @@ public class ReportsPanel extends JPanel implements FilterableDashboardPage {
 
             JCheckBox box = new JCheckBox(section.label(), section.onByDefault());
             box.setOpaque(false);
-            box.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            box.setFont(Theme.BODY);
             box.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             box.setToolTipText("<html><div style='width:320px'>"
                     + section.description() + "</div></html>");
-            boxes.put(section, box);
-            body.add(box);
-            body.add(Box.createVerticalStrut(4));
 
             boxes.put(section, box);
             body.add(box);

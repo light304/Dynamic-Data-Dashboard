@@ -7,7 +7,8 @@ import dashboard.database.AnalyticsApi;
 public class MarketingPanel extends BaseAnalyticsPage {
 
     public MarketingPanel() {
-        super("Marketing", "Channel spend plus whole-business month-level sales comparison");
+        super("Marketing", 
+              "The cost of acquisition, and how spend tracks against revenue");
         refreshData();
     }
 

@@ -1,8 +1,8 @@
-//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category, 
-// and view the detailed records behind that summary. Instead of only seeing aggregated values, 
-// users can inspect the individual sales transactions that contributed to the chart. 
-// The existing dashboard filters, such as year, period, 
-// and region, are carried into the drill-down so the displayed data remains relevant to the current view. 
+//The drill-down feature allows users to click directly on a chart element, such as a revenue bar, region, or product category,
+// and view the detailed records behind that summary. Instead of only seeing aggregated values,
+// users can inspect the individual sales transactions that contributed to the chart.
+// The existing dashboard filters, such as year, period,
+// and region, are carried into the drill-down so the displayed data remains relevant to the current view.
 // Double-clicking is kept separate and is used to expand the chart, while a single click opens the detailed data table.
 
 package dashboard.gui;
@@ -25,12 +25,14 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.SwingConstants;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.entity.CategoryItemEntity;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
@@ -42,17 +44,10 @@ import dashboard.database.SchemaIntrospector.ComparisonRow;
 
 public class RevenueChartPanel extends JPanel {
 
-    private static final Color ACTIVE_COLOR =
-            new Color(0, 212, 255);
-
-    private static final Color PRIMARY_TEXT =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY_TEXT =
-            new Color(100, 116, 139);
-
-    private static final Color BORDER_COLOR =
-            new Color(226, 232, 240);
+    private static final Color ACTIVE_COLOR   = Theme.SERIES_1;
+    private static final Color PRIMARY_TEXT   = Theme.TEXT;
+    private static final Color SECONDARY_TEXT = Theme.TEXT_MUTED;
+    private static final Color BORDER_COLOR   = Theme.BORDER;
 
     private DefaultCategoryDataset revenueDataset;
 
@@ -89,17 +84,25 @@ public class RevenueChartPanel extends JPanel {
 
         setBackground(Color.WHITE);
 
+        /*
+         * Taller than before: the title, description, status line and
+         * hint all grew with the larger fonts, and the plot area was
+         * being squeezed out at 220px.
+         *
+         * These must stay in step with the sizes OverviewPanel applies
+         * to the other cards in the same grid.
+         */
         setPreferredSize(
                 new Dimension(
                         420,
-                        220
+                        260
                 )
         );
 
         setMinimumSize(
                 new Dimension(
                         280,
-                        200
+                        230
                 )
         );
 
@@ -218,11 +221,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         statusLabel.setForeground(
@@ -236,11 +235,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         hint.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        9
-                )
+                Theme.SMALL
         );
 
         hint.setForeground(
@@ -470,11 +465,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         chartTitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        15
-                )
+                Theme.SUBHEAD
         );
 
         chartTitle.setForeground(
@@ -491,11 +482,7 @@ public class RevenueChartPanel extends JPanel {
                 );
 
         description.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         description.setForeground(
@@ -965,20 +952,15 @@ public class RevenueChartPanel extends JPanel {
 
         plot.getDomainAxis()
                 .setTickLabelFont(
-                        new Font(
-                                "SansSerif",
-                                Font.PLAIN,
-                                9
-                        )
+                        Theme.AXIS_TICK
                 );
+
+        plot.getDomainAxis().setCategoryLabelPositions(
+                CategoryLabelPositions.UP_45);
 
         plot.getRangeAxis()
                 .setTickLabelFont(
-                        new Font(
-                                "SansSerif",
-                                Font.PLAIN,
-                                9
-                        )
+                        Theme.AXIS_TICK
                 );
 
         BarRenderer renderer =

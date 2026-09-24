@@ -124,11 +124,7 @@ public class AlertsPanel extends JPanel {
                 new JLabel("Alerts");
 
         title.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        28
-                )
+                Theme.PAGE_TITLE
         );
 
         title.setForeground(PRIMARY);
@@ -140,11 +136,7 @@ public class AlertsPanel extends JPanel {
                 );
 
         subtitle.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        13
-                )
+                Theme.BODY
         );
 
         subtitle.setForeground(SECONDARY);
@@ -357,11 +349,7 @@ public class AlertsPanel extends JPanel {
         table.setRowHeight(34);
 
         table.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.BODY
         );
 
         table.setForeground(PRIMARY);
@@ -516,22 +504,14 @@ public class AlertsPanel extends JPanel {
                 );
 
         heading.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        18
-                )
+                Theme.CHART_TITLE
         );
 
         heading.setForeground(PRIMARY);
 
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.BODY
         );
 
         statusLabel.setForeground(SECONDARY);
@@ -547,11 +527,7 @@ public class AlertsPanel extends JPanel {
 
 
         alertCount.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        30
-                )
+                Theme.PAGE_TITLE
         );
 
         alertCount.setForeground(WARNING);

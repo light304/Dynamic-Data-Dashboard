@@ -16,12 +16,12 @@ import java.util.function.Consumer;
 public class GlobalFilterPanel extends JPanel {
 
     // Main colours used by the filter bar.
-    private static final Color ACTIVE = new Color(0, 190, 225);
-    private static final Color ACTIVE_HOVER = new Color(0, 168, 204);
-    private static final Color TEXT = new Color(31, 41, 55);
-    private static final Color MUTED = new Color(100, 116, 139);
-    private static final Color BORDER = new Color(226, 232, 240);
-    private static final Color SUCCESS = new Color(22, 163, 74);
+    private static final Color ACTIVE = Theme.ACCENT;
+    private static final Color ACTIVE_HOVER = Theme.ACCENT_HOVER;
+    private static final Color TEXT = Theme.TEXT;
+    private static final Color MUTED = Theme.TEXT_MUTED;
+    private static final Color BORDER = Theme.BORDER;
+    private static final Color SUCCESS = Theme.GOOD;
 
     // Dashboard filter controls.
     private final JComboBox<Integer> yearFilter =
@@ -191,11 +191,7 @@ public class GlobalFilterPanel extends JPanel {
         );
 
         apply.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        12
-                )
+                Theme.SMALL_BOLD
         );
 
 
@@ -214,11 +210,7 @@ public class GlobalFilterPanel extends JPanel {
         );
 
         reset.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
 
         reset.setForeground(MUTED);
@@ -237,11 +229,7 @@ public class GlobalFilterPanel extends JPanel {
         // =====================================================
 
         statusLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        11
-                )
+                Theme.SMALL_BOLD
         );
 
         statusLabel.setForeground(SUCCESS);
@@ -249,10 +237,13 @@ public class GlobalFilterPanel extends JPanel {
         /*
          * Reserve some space for the message so the filter bar
          * does not move when the text appears or disappears.
+         *
+         * 125 rather than 105: "Filters applied" is wider at 13pt
+         * than it was at 11pt and was being clipped.
          */
         statusLabel.setPreferredSize(
                 new Dimension(
-                        105,
+                        125,
                         38
                 )
         );
@@ -393,11 +384,7 @@ public class GlobalFilterPanel extends JPanel {
                 );
 
         label.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        10
-                )
+                Theme.SMALL_BOLD
         );
 
         label.setForeground(MUTED);
@@ -431,11 +418,7 @@ public class GlobalFilterPanel extends JPanel {
         combo.setForeground(TEXT);
 
         combo.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.SMALL
         );
     }
 
