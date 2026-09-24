@@ -13,6 +13,7 @@ import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.entity.CategoryItemEntity;
+import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.PlotOrientation;
@@ -20,6 +21,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.chart.entity.PieSectionEntity;
@@ -27,6 +29,7 @@ import org.jfree.chart.entity.PieSectionEntity;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -412,17 +415,26 @@ public static JPanel pie(
 
         Map<String, XYSeries> byCategory = new LinkedHashMap<>();
 
+        Map<String, List<String>> productIdsByCategory = new LinkedHashMap<>();
+
         for (XYPoint p : values) {
 
             byCategory
                     .computeIfAbsent(
                             p.category(),
-                            XYSeries::new
+                            key -> new XYSeries(key, false)
                     )
                     .add(
                             p.x(),
                             p.y()
                     );
+
+            productIdsByCategory
+                    .computeIfAbsent(
+                            p.category(),
+                            key -> new ArrayList<>()
+                    )
+                    .add(p.label());
         }
 
         XYSeriesCollection dataset = new XYSeriesCollection();
@@ -430,6 +442,9 @@ public static JPanel pie(
         for (XYSeries series : byCategory.values()) {
             dataset.addSeries(series);
         }
+
+        List<List<String>> productIdsBySeriesIndex =
+                new ArrayList<>(productIdsByCategory.values());
 
         JFreeChart chart = ChartFactory.createScatterPlot(
                 title,
@@ -452,6 +467,34 @@ public static JPanel pie(
         plot.setDomainGridlinePaint(GRID);
         plot.setRangeGridlinePaint(GRID);
         plot.setOutlineVisible(false);
+
+        // Shows category, Product ID, and both plotted values on hover -
+        // replaces the default "Category: (x, y)" tooltip.
+        XYToolTipGenerator tooltipGenerator =
+                (XYDataset ds, int series, int item) -> {
+
+                    String category =
+                            String.valueOf(ds.getSeriesKey(series));
+
+                    String productId =
+                            (series < productIdsBySeriesIndex.size()
+                                    && item < productIdsBySeriesIndex.get(series).size())
+                                    ? productIdsBySeriesIndex.get(series).get(item)
+                                    : "?";
+
+                    double x = ds.getXValue(series, item);
+                    double y = ds.getYValue(series, item);
+
+                    return "<html>"
+                            + category + " - Product Id: " + productId + "<br>"
+                            + axisLabel(xLabel) + ": " + axisValue(xLabel, x) + "<br>"
+                            + axisLabel(yLabel) + ": " + axisValue(yLabel, y)
+                            + "</html>";
+                };
+
+        if (plot.getRenderer() != null) {
+            plot.getRenderer().setDefaultToolTipGenerator(tooltipGenerator);
+        }
 
         if (plot.getDomainAxis() != null) {
 
@@ -494,6 +537,22 @@ public static JPanel pie(
         styleLegend(chart);
 
         return wrap(chart, null);
+    }
+
+    // Axis label with any trailing unit annotation (e.g. " ($)") stripped, for tooltip text.
+    private static String axisLabel(String label) {
+        int unitStart = label.indexOf(" (");
+        return unitStart >= 0 ? label.substring(0, unitStart) : label;
+    }
+
+    // Formats a tooltip value as currency if its axis label carries a "$" unit, plain otherwise.
+    private static String axisValue(String label, double value) {
+        if (label.contains("$")) {
+            return String.format("$%,.2f", value);
+        }
+        return value == Math.rint(value)
+                ? String.format("%,.0f", value)
+                : String.format("%,.2f", value);
     }
 
     // =========================================================
@@ -716,11 +775,14 @@ public static JPanel pie(
                         ? chart.getTitle().getText()
                         : "Chart";
 
-        JDialog dialog = new JDialog();
+        showExpandedChart(chart, title);
+    }
 
-        dialog.setTitle(title);
-
-        dialog.setModal(false);
+    static void showExpandedChart(
+            JFreeChart chart,
+            String title
+    ) {
+        JFrame dialog = new JFrame(title);
 
         dialog.setDefaultCloseOperation(
                 WindowConstants.DISPOSE_ON_CLOSE

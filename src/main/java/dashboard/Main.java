@@ -86,5 +86,7 @@ public class Main {
 
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
+
+        ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
     }
 }
