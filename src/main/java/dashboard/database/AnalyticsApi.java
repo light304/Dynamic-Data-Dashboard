@@ -15,7 +15,14 @@ public final class AnalyticsApi {
 
     private AnalyticsApi() {}
 
-    public record Point(String label, double value) {}
+    // =========================================================
+    // DATA RECORDS
+    // =========================================================
+
+    public record Point(
+            String label,
+            double value
+    ) {}
 
     public record SeriesPoint(
             String label,
@@ -29,12 +36,33 @@ public final class AnalyticsApi {
             double x,
             double y
     ) {}
+
     public record LowStockAlert(
-        int productId,
-        String category,
-        String warehouse,
-        int stockLevel
-) {}
+            int productId,
+            String category,
+            String warehouse,
+            int stockLevel
+    ) {}
+
+    public record AlertThreshold(
+            String key,
+            String displayName,
+            double value,
+            String unit
+    ) {}
+
+    public record ActiveAlert(
+            int alertId,
+            String alertType,
+            String entityKey,
+            String title,
+            String message,
+            double currentValue,
+            double thresholdValue,
+            String severity,
+            String status,
+            String createdAt
+    ) {}
 
     public record Kpis(
             double revenue,
@@ -53,6 +81,11 @@ public final class AnalyticsApi {
             List<Object[]> rows
     ) {}
 
+
+    // =========================================================
+    // OVERVIEW KPIS
+    // =========================================================
+
     public static Kpis overview(
             Map<String, String> filters
     ) throws Exception {
@@ -69,6 +102,7 @@ public final class AnalyticsApi {
                 );
 
         return new Kpis(
+
                 number(
                         data.get(
                                 "total_revenue"
@@ -130,6 +164,10 @@ public final class AnalyticsApi {
     }
 
 
+    // =========================================================
+    // GENERIC POINT DATA
+    // =========================================================
+
     public static List<Point> points(
             String endpoint,
             Map<String, String> filters
@@ -157,6 +195,7 @@ public final class AnalyticsApi {
 
             result.add(
                     new Point(
+
                             text(
                                     row.get(
                                             "label"
@@ -175,6 +214,10 @@ public final class AnalyticsApi {
         return result;
     }
 
+
+    // =========================================================
+    // GENERIC SERIES DATA
+    // =========================================================
 
     public static List<SeriesPoint> seriesPoints(
             String endpoint,
@@ -203,6 +246,7 @@ public final class AnalyticsApi {
 
             result.add(
                     new SeriesPoint(
+
                             text(
                                     row.get(
                                             "label"
@@ -227,6 +271,10 @@ public final class AnalyticsApi {
         return result;
     }
 
+
+    // =========================================================
+    // GENERIC XY DATA
+    // =========================================================
 
     public static List<XYPoint> xyPoints(
             String endpoint,
@@ -255,6 +303,7 @@ public final class AnalyticsApi {
 
             result.add(
                     new XYPoint(
+
                             text(
                                     row.get(
                                             "label"
@@ -286,13 +335,12 @@ public final class AnalyticsApi {
     }
 
 
+    // =========================================================
+    // SALES DRILL-DOWN
+    // =========================================================
+
     /**
      * Existing method kept so current code does not break.
-     *
-     * Existing callers:
-     * showSales(parent, month, category, region)
-     *
-     * will still work exactly as before.
      */
     public static TableData drilldownSales(
             String month,
@@ -310,16 +358,7 @@ public final class AnalyticsApi {
 
 
     /**
-     * New drill-down method with week support.
-     *
-     * Example:
-     *
-     * month = "2023-01"
-     * week = "Week 2"
-     *
-     * will request:
-     *
-     * /api/drilldown/sales?month=2023-01&week=Week%202
+     * Sales drill-down with optional week support.
      */
     public static TableData drilldownSales(
             String month,
@@ -470,6 +509,10 @@ public final class AnalyticsApi {
     }
 
 
+    // =========================================================
+    // FILTER HELPERS
+    // =========================================================
+
     public static Map<String, String> copyFilters(
             Map<String, String> filters
     ) {
@@ -481,6 +524,10 @@ public final class AnalyticsApi {
                 );
     }
 
+
+    // =========================================================
+    // HTTP GET HELPER
+    // =========================================================
 
     private static Map<String, Object> getObject(
             String endpoint,
@@ -537,6 +584,10 @@ public final class AnalyticsApi {
         return root;
     }
 
+
+    // =========================================================
+    // JSON HELPERS
+    // =========================================================
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> asMap(
@@ -629,6 +680,10 @@ public final class AnalyticsApi {
                 );
     }
 
+
+    // =========================================================
+    // CSV UPLOAD
+    // =========================================================
 
     public record UploadResult(
             boolean success,
@@ -748,168 +803,553 @@ public final class AnalyticsApi {
                 detail
         );
     }
+
+
+    // =========================================================
+    // INVENTORY DRILL-DOWN
+    // =========================================================
+
     public static TableData drilldownInventory(
-        String warehouse,
-        Map<String, String> filters
-) throws Exception {
+            String warehouse,
+            Map<String, String> filters
+    ) throws Exception {
 
-    Map<String, String> params =
-            new LinkedHashMap<>();
+        Map<String, String> params =
+                new LinkedHashMap<>();
 
-    if (filters != null) {
-        params.putAll(filters);
-    }
 
-    if (
-            warehouse != null
-            && !warehouse.isBlank()
-    ) {
-        params.put(
-                "warehouse",
-                warehouse
+        if (filters != null) {
+
+            params.putAll(
+                    filters
+            );
+        }
+
+
+        if (
+                warehouse != null
+                && !warehouse.isBlank()
+        ) {
+
+            params.put(
+                    "warehouse",
+                    warehouse
+            );
+        }
+
+
+        return readTableData(
+                "api/drilldown/inventory",
+                params
         );
     }
 
-    return readTableData(
-            "api/drilldown/inventory",
-            params
-    );
-}
+
+    // =========================================================
+    // MARKETING DRILL-DOWN
+    // =========================================================
+
+    public static TableData drilldownMarketing(
+            String channel,
+            Map<String, String> filters
+    ) throws Exception {
+
+        Map<String, String> params =
+                new LinkedHashMap<>();
 
 
-public static TableData drilldownMarketing(
-        String channel,
-        Map<String, String> filters
-) throws Exception {
+        if (filters != null) {
 
-    Map<String, String> params =
-            new LinkedHashMap<>();
+            params.putAll(
+                    filters
+            );
+        }
 
-    if (filters != null) {
-        params.putAll(filters);
-    }
 
-    if (
-            channel != null
-            && !channel.isBlank()
-    ) {
-        params.put(
-                "channel",
-                channel
+        if (
+                channel != null
+                && !channel.isBlank()
+        ) {
+
+            params.put(
+                    "channel",
+                    channel
+            );
+        }
+
+
+        return readTableData(
+                "api/drilldown/marketing",
+                params
         );
     }
 
-    return readTableData(
-            "api/drilldown/marketing",
-            params
-    );
-}
 
+    // =========================================================
+    // GENERIC TABLE DATA
+    // =========================================================
 
-private static TableData readTableData(
-        String endpoint,
-        Map<String, String> params
-) throws Exception {
+    private static TableData readTableData(
+            String endpoint,
+            Map<String, String> params
+    ) throws Exception {
 
-    Map<String, Object> root =
-            getObject(
-                    endpoint,
-                    params
-            );
-
-    List<Object> columnsRaw =
-            asList(
-                    root.get(
-                            "columns"
-                    )
-            );
-
-    String[] columns =
-            new String[
-                    columnsRaw.size()
-            ];
-
-    for (
-            int i = 0;
-            i < columns.length;
-            i++
-    ) {
-        columns[i] =
-                text(
-                        columnsRaw.get(i)
+        Map<String, Object> root =
+                getObject(
+                        endpoint,
+                        params
                 );
-    }
 
-    List<Object[]> rows =
-            new ArrayList<>();
 
-    for (
-            Object item :
-            asList(
-                    root.get(
-                            "data"
-                    )
-            )
-    ) {
+        List<Object> columnsRaw =
+                asList(
+                        root.get(
+                                "columns"
+                        )
+                );
 
-        Map<String, Object> row =
-                asMap(item);
 
-        Object[] values =
-                new Object[
-                        columns.length
+        String[] columns =
+                new String[
+                        columnsRaw.size()
                 ];
 
+
         for (
-                int c = 0;
-                c < columns.length;
-                c++
+                int i = 0;
+                i < columns.length;
+                i++
         ) {
-            values[c] =
-                    row.get(
-                            columns[c]
+
+            columns[i] =
+                    text(
+                            columnsRaw.get(
+                                    i
+                            )
                     );
         }
 
-        rows.add(values);
-    }
 
-    return new TableData(
-            columns,
-            rows
-    );
-}
+        List<Object[]> rows =
+                new ArrayList<>();
 
-/**
- * Returns all products currently flagged by the backend
- * as having low stock levels.
- */
-public static List<LowStockAlert> lowStockAlerts() throws Exception {
 
-    Map<String, Object> root =
-            getObject(
-                    "api/alerts/low-stock",
-                    Map.of()
-            );
-
-    List<LowStockAlert> alerts =
-            new ArrayList<>();
-
-    for (Object item : asList(root.get("data"))) {
-
-        Map<String, Object> row =
-                asMap(item);
-
-        alerts.add(
-                new LowStockAlert(
-                        ((Number) row.get("product_id")).intValue(),
-                        text(row.get("category")),
-                        text(row.get("warehouse")),
-                        ((Number) row.get("stock_level")).intValue()
+        for (
+                Object item :
+                asList(
+                        root.get(
+                                "data"
+                        )
                 )
+        ) {
+
+            Map<String, Object> row =
+                    asMap(
+                            item
+                    );
+
+
+            Object[] values =
+                    new Object[
+                            columns.length
+                    ];
+
+
+            for (
+                    int c = 0;
+                    c < columns.length;
+                    c++
+            ) {
+
+                values[c] =
+                        row.get(
+                                columns[c]
+                        );
+            }
+
+
+            rows.add(
+                    values
+            );
+        }
+
+
+        return new TableData(
+                columns,
+                rows
         );
     }
 
-    return alerts;
-}
+
+    // =========================================================
+    // LEGACY LOW STOCK ALERTS
+    // =========================================================
+
+    /**
+     * Existing low-stock endpoint retained so existing callers
+     * elsewhere in the dashboard continue to work.
+     */
+    public static List<LowStockAlert> lowStockAlerts()
+            throws Exception {
+
+        Map<String, Object> root =
+                getObject(
+                        "api/alerts/low-stock",
+                        Map.of()
+                );
+
+
+        List<LowStockAlert> alerts =
+                new ArrayList<>();
+
+
+        for (
+                Object item :
+                asList(
+                        root.get(
+                                "data"
+                        )
+                )
+        ) {
+
+            Map<String, Object> row =
+                    asMap(
+                            item
+                    );
+
+
+            alerts.add(
+                    new LowStockAlert(
+
+                            (int) number(
+                                    row.get(
+                                            "product_id"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "category"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "warehouse"
+                                    )
+                            ),
+
+                            (int) number(
+                                    row.get(
+                                            "stock_level"
+                                    )
+                            )
+                    )
+            );
+        }
+
+
+        return alerts;
+    }
+
+
+    // =========================================================
+    // GET ALERT THRESHOLDS
+    // =========================================================
+
+    public static List<AlertThreshold> alertThresholds()
+            throws Exception {
+
+        Map<String, Object> root =
+                getObject(
+                        "api/alerts/thresholds",
+                        Map.of()
+                );
+
+
+        List<AlertThreshold> thresholds =
+                new ArrayList<>();
+
+
+        for (
+                Object item :
+                asList(
+                        root.get(
+                                "data"
+                        )
+                )
+        ) {
+
+            Map<String, Object> row =
+                    asMap(
+                            item
+                    );
+
+
+            thresholds.add(
+                    new AlertThreshold(
+
+                            text(
+                                    row.get(
+                                            "threshold_key"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "display_name"
+                                    )
+                            ),
+
+                            number(
+                                    row.get(
+                                            "threshold_value"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "unit"
+                                    )
+                            )
+                    )
+            );
+        }
+
+
+        return thresholds;
+    }
+
+
+    // =========================================================
+    // SAVE ALERT THRESHOLD
+    // =========================================================
+
+    public static void saveAlertThreshold(
+            String thresholdKey,
+            double thresholdValue
+    ) throws Exception {
+
+        String safeKey =
+                thresholdKey == null
+                        ? ""
+                        : thresholdKey
+                                .replace(
+                                        "\\",
+                                        "\\\\"
+                                )
+                                .replace(
+                                        "\"",
+                                        "\\\""
+                                );
+
+
+        String body =
+                "{"
+                        + "\"threshold_key\":\""
+                        + safeKey
+                        + "\","
+                        + "\"threshold_value\":"
+                        + thresholdValue
+                        + "}";
+
+
+        Map<String, Object> root =
+                asMap(
+                        SchemaIntrospector
+                                .MiniJson
+                                .parse(
+                                        ApiClient.postJson(
+                                                "api/alerts/thresholds",
+                                                body
+                                        )
+                                )
+                );
+
+
+        Object success =
+                root.get(
+                        "success"
+                );
+
+
+        if (
+                !(success instanceof Boolean)
+                || !((Boolean) success)
+        ) {
+
+            String error =
+                    text(
+                            root.get(
+                                    "error"
+                            )
+                    );
+
+
+            throw new IllegalStateException(
+                    error.isBlank()
+                            ? "Unable to save alert threshold."
+                            : error
+            );
+        }
+    }
+
+
+    // =========================================================
+    // ACTIVE ALERTS
+    // =========================================================
+
+    public static List<ActiveAlert> activeAlerts()
+            throws Exception {
+
+        Map<String, Object> root =
+                getObject(
+                        "api/alerts/active",
+                        Map.of()
+                );
+
+
+        List<ActiveAlert> alerts =
+                new ArrayList<>();
+
+
+        for (
+                Object item :
+                asList(
+                        root.get(
+                                "data"
+                        )
+                )
+        ) {
+
+            Map<String, Object> row =
+                    asMap(
+                            item
+                    );
+
+
+            alerts.add(
+                    new ActiveAlert(
+
+                            (int) number(
+                                    row.get(
+                                            "alert_id"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "alert_type"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "entity_key"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "title"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "message"
+                                    )
+                            ),
+
+                            number(
+                                    row.get(
+                                            "current_value"
+                                    )
+                            ),
+
+                            number(
+                                    row.get(
+                                            "threshold_value"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "severity"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "status"
+                                    )
+                            ),
+
+                            text(
+                                    row.get(
+                                            "created_at"
+                                    )
+                            )
+                    )
+            );
+        }
+
+
+        return alerts;
+    }
+
+
+    // =========================================================
+    // MANUAL ALERT DETECTION
+    // =========================================================
+
+    public static int detectAlerts()
+            throws Exception {
+
+        Map<String, Object> root =
+                asMap(
+                        SchemaIntrospector
+                                .MiniJson
+                                .parse(
+                                        ApiClient.postJson(
+                                                "api/alerts/detect",
+                                                "{}"
+                                        )
+                                )
+                );
+
+
+        Object success =
+                root.get(
+                        "success"
+                );
+
+
+        if (
+                !(success instanceof Boolean)
+                || !((Boolean) success)
+        ) {
+
+            String error =
+                    text(
+                            root.get(
+                                    "error"
+                            )
+                    );
+
+
+            throw new IllegalStateException(
+                    error.isBlank()
+                            ? "Alert detection failed."
+                            : error
+            );
+        }
+
+
+        return (int) number(
+                root.get(
+                        "active_alerts"
+                )
+        );
+    }
 }
