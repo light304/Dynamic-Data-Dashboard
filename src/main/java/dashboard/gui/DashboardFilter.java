@@ -28,4 +28,11 @@ public record DashboardFilter(int year, String scope, String month, String perio
         if (month != null && !month.isBlank()) params.put("month", month);
         return params;
     }
+
+    /** Human-readable description of the selected period, for report headers. */
+    public String periodLabel() {
+        if ("Weekly".equals(scope))  return period + ", " + month + " " + year;
+        if ("Yearly".equals(scope))  return "Full Year " + year;
+        return period + " " + year;
+    }
 }

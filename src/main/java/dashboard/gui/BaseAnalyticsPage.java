@@ -1,4 +1,5 @@
 package dashboard.gui;
+import dashboard.report.ChartSpec.Page;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -27,7 +28,7 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
 
     private final JButton refreshButton = new JButton("Refresh");
 
-    protected BaseAnalyticsPage(String title, String subtitle) {
+    protected BaseAnalyticsPage(String title, String subtitle, Page page) {
 
         setLayout(new BorderLayout(0, 18));
         setBackground(BACKGROUND);
@@ -79,14 +80,15 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
 
         refreshButton.addActionListener(e -> refreshData());
 
-        JPanel refreshArea =
-                new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel buttonArea =
+            new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
 
-        refreshArea.setOpaque(false);
-        refreshArea.add(refreshButton);
+        buttonArea.setOpaque(false);
+        buttonArea.add(ExportButton.create(this, page, () -> filter));
+        buttonArea.add(refreshButton);
 
         header.add(titleArea, BorderLayout.WEST);
-        header.add(refreshArea, BorderLayout.EAST);
+        header.add(buttonArea, BorderLayout.EAST);
 
         add(header, BorderLayout.NORTH);
 
@@ -191,11 +193,11 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
             if (component instanceof JComponent card) {
 
                 card.setPreferredSize(
-                        new Dimension(450, 360)
+                        new Dimension(450, 410)
                 );
 
                 card.setMinimumSize(
-                        new Dimension(320, 330)
+                        new Dimension(320, 380)
                 );
             }
         }

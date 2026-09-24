@@ -1187,10 +1187,15 @@ public static JPanel pie(
             );
         }
 
+        /*
+         * Single-series bar charts otherwise fall through to
+         * JFreeChart's default paint, which is red.
+         */
         if (plot.getRenderer() instanceof BarRenderer barRenderer) {
             barRenderer.setSeriesPaint(0, Theme.SERIES_1);
             barRenderer.setShadowVisible(false);
         }
+
     }
 
     // =========================================================

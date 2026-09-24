@@ -1386,6 +1386,21 @@ app.get(
             || 'All Regions'
           );
 
+        const scope =
+          String(
+            req.query.scope || 'Yearly'
+          ).toLowerCase();
+
+        /*
+         * Yearly and Quarterly want one point per month.
+         * Monthly and Weekly want one per day - dashboardRange has
+         * already narrowed the window, so grouping is all that changes.
+         */
+        const labelSql =
+          (scope === 'monthly' || scope === 'weekly')
+            ? `strftime('%Y-%m-%d', s.order_date)`
+            : `strftime('%Y-%m', s.order_date)`;
+
         const params = [
           range.start,
           range.end
@@ -1402,10 +1417,7 @@ app.get(
           db.prepare(`
             SELECT
 
-              strftime(
-                '%Y-%m',
-                s.order_date
-              ) AS label,
+              ${labelSql} AS label,
 
               ROUND(
                 SUM(
@@ -1526,15 +1538,22 @@ app.get(
             region,
             params
           );
+        
+        const scope =
+          String(
+            req.query.scope || 'Yearly'
+          ).toLowerCase();
+
+        const labelSql =
+          (scope === 'monthly' || scope === 'weekly')
+            ? `strftime('%Y-%m-%d', s.order_date)`
+            : `strftime('%Y-%m', s.order_date)`;
 
         const rows =
           db.prepare(`
             SELECT
 
-              strftime(
-                '%Y-%m',
-                s.order_date
-              ) AS label,
+              ${labelSql} AS label,
 
               ROUND(
 

@@ -9,124 +9,196 @@ import dashboard.database.AnalyticsApi;
 import dashboard.database.AnalyticsApi.Kpis;
 import dashboard.database.AnalyticsApi.Point;
 import dashboard.database.AnalyticsApi.SeriesPoint;
+import dashboard.database.AnalyticsApi.XYPoint;
+
+import dashboard.gui.Theme;
+import dashboard.report.ChartSpec.Page;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.category.StandardBarPainter;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+/**
+ * Writes one page's PDF.
+ *
+ * Every chart it draws comes from ChartCatalogue, so the PDF cannot
+ * disagree with the screen about a title, an axis label or a caveat.
+ */
 public final class ReportBuilder {
 
     private static final Font H1 =
-            new Font(Font.HELVETICA, 20, Font.BOLD, new Color(31, 41, 55));
+            new Font(Font.HELVETICA, 20, Font.BOLD, Theme.TEXT);
     private static final Font H2 =
-            new Font(Font.HELVETICA, 13, Font.BOLD, new Color(31, 41, 55));
+            new Font(Font.HELVETICA, 13, Font.BOLD, Theme.TEXT);
     private static final Font BODY =
             new Font(Font.HELVETICA, 10, Font.NORMAL, new Color(55, 65, 81));
     private static final Font MUTED =
-            new Font(Font.HELVETICA, 9, Font.ITALIC, new Color(120, 130, 145));
+            new Font(Font.HELVETICA, 9, Font.ITALIC, Theme.TEXT_MUTED);
+
+    /** Same five series colours the dashboard draws with. */
+    private static final Color[] SERIES = {
+            Theme.SERIES_1, Theme.SERIES_2, Theme.SERIES_3,
+            Theme.SERIES_4, Theme.SERIES_5
+    };
 
     private ReportBuilder() {}
 
     // =====================================================
-    // PDF
+    // Entry points
     // =====================================================
 
+    /** The export button on an analytics page calls this. */
     public static void writePdf(File target,
+                                Page page,
                                 Map<String, String> filters,
-                                String periodLabel,
-                                Set<ReportSection> sections) throws Exception {
+                                String periodLabel) throws Exception {
+
+        writePdf(target,
+                 heading(page),
+                 ChartCatalogue.reportFor(page),
+                 filters,
+                 periodLabel);
+    }
+
+    /** Takes an explicit list, so Alerts can reuse the same header later. */
+    public static void writePdf(File target,
+                                String heading,
+                                List<ChartSpec> specs,
+                                Map<String, String> filters,
+                                String periodLabel) throws Exception {
 
         Document doc = new Document(PageSize.A4, 45, 45, 50, 50);
         PdfWriter.getInstance(doc, new FileOutputStream(target));
         doc.open();
 
-        // ---- header ----
         doc.add(new Paragraph("Dynamic Retail Dashboard", H1));
-        doc.add(new Paragraph("Business Overview Report", H2));
+        doc.add(new Paragraph(heading, H2));
         doc.add(Chunk.NEWLINE);
 
         doc.add(new Paragraph("Period: " + periodLabel, BODY));
-        doc.add(new Paragraph("Region: " + filters.getOrDefault("region", "All Regions"), BODY));
+        doc.add(new Paragraph(
+                "Region: " + filters.getOrDefault("region", "All Regions"), BODY));
         doc.add(new Paragraph("Generated: "
                 + LocalDateTime.now().format(
                         DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm")), MUTED));
         doc.add(Chunk.NEWLINE);
 
-        // ---- KPI table ----
-        if (sections.contains(ReportSection.KPI_TABLE)) {
-            doc.add(new Paragraph("Key Performance Indicators", H2));
-            doc.add(Chunk.NEWLINE);
+        for (ChartSpec spec : specs) {
 
-            Kpis kpis = AnalyticsApi.overview(filters);
-            doc.add(kpiTable(kpis));
-
-            if (!kpis.profitIncludesMarketing() || kpis.turnoverRegionIgnored()) {
-                doc.add(Chunk.NEWLINE);
-                doc.add(new Paragraph(
-                        "Note: a region filter is applied. Profit is shown gross, because "
-                        + "marketing spend has no region. Inventory turnover and customer "
-                        + "retention are whole-business figures, because inventory and "
-                        + "customers have no region either.", MUTED));
-            }
-            doc.add(Chunk.NEWLINE);
-        }
-
-        // ---- charts ----
-                for (ReportSection section : ReportSection.values()) {
-
-            if (section.endpoint() == null) continue;
-            if (!sections.contains(section)) continue;
-
-            JFreeChart chart = buildChart(section, filters);
-
-            if (chart == null) {
-                doc.add(new Paragraph(section.label(), H2));
-                doc.add(Chunk.NEWLINE);
-                doc.add(new Paragraph("No data for this period.", MUTED));
-                doc.add(Chunk.NEWLINE);
+            if (spec.kind() == ChartSpec.Kind.KPI_TABLE) {
+                addKpiBlock(doc, spec, filters);
                 continue;
             }
 
-            ByteArrayOutputStream png = new ByteArrayOutputStream();
-            ChartUtils.writeChartAsPNG(png, chart, 700, 360);
+            if (spec.endpoint() == null) continue;
 
-            Image image = Image.getInstance(png.toByteArray());
-            image.scaleToFit(500, 260);
-
-            Paragraph block = new Paragraph();
-            block.setKeepTogether(true);
-            block.add(new Paragraph(section.label(), H2));
-            block.add(new Paragraph(section.description(), BODY));
-            block.add(Chunk.NEWLINE);
-            block.add(new Chunk(image, 0, 0));
-
-            if (section.showsDataTable()) {
-                block.add(Chunk.NEWLINE);
-                block.add(dataTable(
-                        AnalyticsApi.points(section.endpoint(), filters), section));
-            }
-
-            doc.add(block);
-            doc.add(Chunk.NEWLINE);
+            addChartBlock(doc, spec, filters);
         }
 
         doc.close();
     }
+
+    private static String heading(Page page) {
+        return switch (page) {
+            case OVERVIEW  -> "Business Overview Report";
+            case SALES     -> "Sales Report";
+            case PRODUCTS  -> "Products Report";
+            case INVENTORY -> "Inventory Report";
+            case MARKETING -> "Marketing Report";
+            case CUSTOMERS -> "Customers Report";
+        };
+    }
+
+    // =====================================================
+    // Blocks
+    // =====================================================
+
+    private static void addKpiBlock(Document doc,
+                                    ChartSpec spec,
+                                    Map<String, String> filters) throws Exception {
+
+        doc.add(new Paragraph(spec.title(), H2));
+        doc.add(new Paragraph(spec.description(), BODY));
+        doc.add(Chunk.NEWLINE);
+
+        Kpis kpis = AnalyticsApi.overview(filters);
+        doc.add(kpiTable(kpis));
+
+        if (!kpis.profitIncludesMarketing() || kpis.turnoverRegionIgnored()) {
+            doc.add(Chunk.NEWLINE);
+            doc.add(new Paragraph(
+                    "Note: a region filter is applied. Profit is shown gross, because "
+                    + "marketing spend has no region. Inventory turnover and customer "
+                    + "retention are whole-business figures, because inventory and "
+                    + "customers have no region either.", MUTED));
+        }
+        doc.add(Chunk.NEWLINE);
+    }
+
+    private static void addChartBlock(Document doc,
+                                      ChartSpec spec,
+                                      Map<String, String> filters) throws Exception {
+
+        JFreeChart chart = buildChart(spec, filters);
+
+        if (chart == null) {
+            doc.add(new Paragraph(spec.title(), H2));
+            doc.add(new Paragraph(spec.fullDescription(), BODY));
+            doc.add(Chunk.NEWLINE);
+            doc.add(new Paragraph("No data for this period.", MUTED));
+            doc.add(Chunk.NEWLINE);
+            return;
+        }
+
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        ChartUtils.writeChartAsPNG(png, chart, 700, 360);
+
+        Image image = Image.getInstance(png.toByteArray());
+        image.scaleToFit(500, 260);
+
+        Paragraph block = new Paragraph();
+        block.setKeepTogether(true);
+        block.add(new Paragraph(spec.title(), H2));
+        block.add(new Paragraph(spec.fullDescription(), BODY));
+        block.add(Chunk.NEWLINE);
+        block.add(new Chunk(image, 0, 0));
+
+        if (spec.showsDataTable()) {
+            block.add(Chunk.NEWLINE);
+            block.add(dataTable(
+                    AnalyticsApi.points(spec.endpoint(), filters), spec));
+        }
+
+        doc.add(block);
+        doc.add(Chunk.NEWLINE);
+    }
+
+    // =====================================================
+    // Tables
+    // =====================================================
 
     private static PdfPTable kpiTable(Kpis k) {
         PdfPTable table = new PdfPTable(new float[]{3f, 2f});
@@ -135,16 +207,27 @@ public final class ReportBuilder {
         header(table, "Indicator");
         header(table, "Value");
 
-        row(table, "Total Revenue",        String.format("$%,.2f", k.revenue()));
+        row(table, "Total Revenue",       String.format("$%,.2f", k.revenue()));
         row(table, "Revenue Growth", k.growth() == null
-            ? "N/A"
-            : String.format("%.2f%%", k.growth()));
-        row(table, "Profit (net)",         String.format("$%,.2f", k.profit()));
-        row(table, "Gross Profit Margin",  String.format("%.2f%%", k.margin()));
-        row(table, "Inventory Turnover",   String.format("%.3f", k.turnover()));
-        row(table, "Customer Retention",   String.format("%.2f%%", k.retention()));
-        row(table, "Cost per Conversion",  String.format("$%,.2f", k.costPerConversion()));
+                ? "N/A"
+                : String.format("%.2f%%", k.growth()));
+        row(table, "Profit (net)",        String.format("$%,.2f", k.profit()));
+        row(table, "Gross Profit Margin", String.format("%.2f%%", k.margin()));
+        row(table, "Inventory Turnover",  String.format("%.3f", k.turnover()));
+        row(table, "Customer Retention",  String.format("%.2f%%", k.retention()));
+        row(table, "Cost per Conversion", String.format("$%,.2f", k.costPerConversion()));
 
+        return table;
+    }
+
+    private static PdfPTable dataTable(List<Point> points, ChartSpec spec) {
+        PdfPTable table = new PdfPTable(new float[]{3f, 2f});
+        table.setWidthPercentage(60);
+        header(table, spec.xLabel());
+        header(table, spec.yLabel());
+        for (Point p : points) {
+            row(table, p.label(), String.format("%,.2f", p.value()));
+        }
         return table;
     }
 
@@ -164,150 +247,193 @@ public final class ReportBuilder {
         table.addCell(b);
     }
 
-    private static PdfPTable dataTable(List<Point> points, ReportSection section) {
-        PdfPTable table = new PdfPTable(new float[]{3f, 2f});
-        table.setWidthPercentage(60);
-        header(table, section.xLabel());
-        header(table, section.yLabel());
-        for (Point p : points) {
-            row(table, p.label(), String.format("%,.2f", p.value()));
-        }
-        return table;
-    }
-
     // =====================================================
     // Charts
     // =====================================================
 
-    private static JFreeChart buildChart(ReportSection section,
+    private static JFreeChart buildChart(ChartSpec spec,
                                          Map<String, String> filters) throws Exception {
 
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        JFreeChart chart = switch (spec.kind()) {
+            case BAR, LINE                -> singleSeries(spec, filters);
+            case GROUPED_BAR, MULTI_LINE  -> multiSeries(spec, filters);
+            case PIE                      -> pie(spec, filters);
+            case SCATTER                  -> scatter(spec, filters);
+            case KPI_TABLE                -> null;
+        };
 
-        if (section.isSeries()) {
-            List<SeriesPoint> points =
-                    AnalyticsApi.seriesPoints(section.endpoint(), filters);
-            if (points.isEmpty()) return null;
-            for (SeriesPoint p : points) {
-                dataset.addValue(p.value(), p.series(), p.label());
-            }
-        } else {
-            List<Point> points = AnalyticsApi.points(section.endpoint(), filters);
-            if (points.isEmpty()) return null;
-            for (Point p : points) {
-                dataset.addValue(p.value(), section.yLabel(), p.label());
-            }
-        }
-
-        boolean overTime = section.xLabel().equals("Month");
-
-        JFreeChart chart = overTime
-                ? ChartFactory.createLineChart(
-                        null, section.xLabel(), section.yLabel(),
-                        dataset, PlotOrientation.VERTICAL, section.isSeries(), false, false)
-                : ChartFactory.createBarChart(
-                        null, section.xLabel(), section.yLabel(),
-                        dataset, PlotOrientation.VERTICAL, section.isSeries(), false, false);
-
-        style(chart);
+        if (chart != null) style(chart, spec);
         return chart;
     }
 
-    private static void style(JFreeChart chart) {
+    private static JFreeChart singleSeries(ChartSpec spec,
+                                           Map<String, String> filters) throws Exception {
+
+        List<Point> points = AnalyticsApi.points(spec.endpoint(), filters);
+        if (points.isEmpty()) return null;
+
+        String key = spec.seriesName() == null ? spec.yLabel() : spec.seriesName();
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (Point p : points) {
+            dataset.addValue(p.value(), key, p.label());
+        }
+
+        PlotOrientation orientation = spec.horizontal()
+                ? PlotOrientation.HORIZONTAL
+                : PlotOrientation.VERTICAL;
+
+        return spec.kind() == ChartSpec.Kind.LINE
+                ? ChartFactory.createLineChart(
+                        null, spec.xLabel(), spec.yLabel(),
+                        dataset, orientation, false, false, false)
+                : ChartFactory.createBarChart(
+                        null, spec.xLabel(), spec.yLabel(),
+                        dataset, orientation, false, false, false);
+    }
+
+    private static JFreeChart multiSeries(ChartSpec spec,
+                                          Map<String, String> filters) throws Exception {
+
+        List<SeriesPoint> points = AnalyticsApi.seriesPoints(spec.endpoint(), filters);
+        if (points.isEmpty()) return null;
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (SeriesPoint p : points) {
+            dataset.addValue(p.value(), p.series(), p.label());
+        }
+
+        PlotOrientation orientation = spec.horizontal()
+                ? PlotOrientation.HORIZONTAL
+                : PlotOrientation.VERTICAL;
+
+        return spec.kind() == ChartSpec.Kind.MULTI_LINE
+                ? ChartFactory.createLineChart(
+                        null, spec.xLabel(), spec.yLabel(),
+                        dataset, orientation, true, false, false)
+                : ChartFactory.createBarChart(
+                        null, spec.xLabel(), spec.yLabel(),
+                        dataset, orientation, true, false, false);
+    }
+
+    private static JFreeChart pie(ChartSpec spec,
+                                  Map<String, String> filters) throws Exception {
+
+        List<Point> points = AnalyticsApi.points(spec.endpoint(), filters);
+        if (points.isEmpty()) return null;
+
+        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+        for (Point p : points) {
+            dataset.setValue(p.label(), p.value());
+        }
+
+        return ChartFactory.createPieChart(null, dataset, true, false, false);
+    }
+
+    private static JFreeChart scatter(ChartSpec spec,
+                                      Map<String, String> filters) throws Exception {
+
+        List<XYPoint> points = AnalyticsApi.xyPoints(spec.endpoint(), filters);
+        if (points.isEmpty()) return null;
+
+        // One series per category, so the legend names the categories.
+        Map<String, XYSeries> byCategory = new LinkedHashMap<>();
+        for (XYPoint p : points) {
+            String category = p.category() == null ? "All" : p.category();
+            byCategory.computeIfAbsent(category, XYSeries::new)
+                      .add(p.x(), p.y());
+        }
+
+        XYSeriesCollection dataset = new XYSeriesCollection();
+        byCategory.values().forEach(dataset::addSeries);
+
+        return ChartFactory.createScatterPlot(
+                null, spec.xLabel(), spec.yLabel(),
+                dataset, PlotOrientation.VERTICAL, true, false, false);
+    }
+
+    // =====================================================
+    // Styling
+    //
+    // Dispatches on the plot, because only a bar or line chart has a
+    // CategoryPlot. The old code called getCategoryPlot() unconditionally,
+    // which would have thrown on the first pie.
+    // =====================================================
+
+    private static void style(JFreeChart chart, ChartSpec spec) {
+
         chart.setBackgroundPaint(Color.WHITE);
 
-        CategoryPlot plot = chart.getCategoryPlot();
+        if (chart.getPlot() instanceof CategoryPlot plot) {
+            styleCategory(plot, spec);
+        } else if (chart.getPlot() instanceof PiePlot) {
+            stylePie(chart);
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            styleXy(plot);
+        }
+    }
+
+    private static void styleCategory(CategoryPlot plot, ChartSpec spec) {
+
         plot.setBackgroundPaint(Color.WHITE);
-        plot.setRangeGridlinePaint(new Color(220, 224, 230));
-        plot.setOutlinePaint(new Color(220, 224, 230));
+        plot.setRangeGridlinePaint(Theme.GRID);
+        plot.setOutlineVisible(false);
 
+        int rows = plot.getDataset() == null ? 0 : plot.getDataset().getRowCount();
+
+        if (plot.getRenderer() instanceof BarRenderer bar) {
+            bar.setShadowVisible(false);
+            bar.setBarPainter(new StandardBarPainter());
+            for (int i = 0; i < rows; i++) {
+                bar.setSeriesPaint(i, SERIES[i % SERIES.length]);
+            }
+        } else {
+            for (int i = 0; i < rows; i++) {
+                plot.getRenderer().setSeriesPaint(i, SERIES[i % SERIES.length]);
+                plot.getRenderer().setSeriesStroke(i, new BasicStroke(2.0f));
+            }
+        }
+
+        int columns = plot.getDataset() == null ? 0 : plot.getDataset().getColumnCount();
+
+        // Horizontal bars read their labels down the side, so they never collide.
         plot.getDomainAxis().setCategoryLabelPositions(
-                CategoryLabelPositions.UP_45);
-        plot.getDomainAxis().setMaximumCategoryLabelWidthRatio(5.0f);
+                (!spec.horizontal() && columns > 6)
+                        ? CategoryLabelPositions.UP_45
+                        : CategoryLabelPositions.STANDARD);
+
+        plot.getDomainAxis().setMaximumCategoryLabelWidthRatio(1.0f);
     }
 
-    // =====================================================
-    // CSV
-    // =====================================================
+    private static void stylePie(JFreeChart chart) {
 
-    public static void writeCsv(File target,
-                                Map<String, String> filters,
-                                String periodLabel,
-                                Set<ReportSection> sections) throws Exception {
+        @SuppressWarnings("unchecked")
+        PiePlot<String> plot = (PiePlot<String>) chart.getPlot();
 
-        try (PrintWriter out = new PrintWriter(target, "UTF-8")) {
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlineVisible(false);
+        plot.setShadowPaint(null);
+        plot.setLabelBackgroundPaint(Color.WHITE);
+        plot.setLabelOutlinePaint(null);
+        plot.setLabelShadowPaint(null);
 
-            out.println("Dynamic Retail Dashboard - Business Overview Report");
-            out.println("Period," + csv(periodLabel));
-            out.println("Region," + csv(filters.getOrDefault("region", "All Regions")));
-            out.println("Generated," + csv(LocalDateTime.now()
-                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
-            out.println();
-
-            if (sections.contains(ReportSection.KPI_TABLE)) {
-                Kpis k = AnalyticsApi.overview(filters);
-                out.println("Key Performance Indicators");
-                out.println("Indicator,Value");
-                out.println("Total Revenue," + k.revenue());
-                out.println("Revenue Growth %," + (k.growth() == null 
-                    ? "N/A" 
-                    : k.growth()));
-                out.println("Profit (net)," + k.profit());
-                out.println("Gross Profit Margin %," + k.margin());
-                out.println("Inventory Turnover," + k.turnover());
-                out.println("Customer Retention %," + k.retention());
-                out.println("Cost per Conversion," + k.costPerConversion());
-
-                if (!k.profitIncludesMarketing() || k.turnoverRegionIgnored()) {
-                    out.println();
-                    out.println(csv("Note: region filter applied. Profit is gross; "
-                            + "turnover and retention are whole-business."));
-                }
-
-                out.println();
-            }
-
-            for (ReportSection section : ReportSection.values()) {
-
-                if (section.endpoint() == null) continue;
-                if (!sections.contains(section)) continue;
-
-                out.println(csv(section.label()));
-
-                if (section.isSeries()) {
-                    List<SeriesPoint> points =
-                            AnalyticsApi.seriesPoints(section.endpoint(), filters);
-                    if (points.isEmpty()) {
-                        out.println("No data for this period");
-                    } else {
-                        out.println(csv(section.xLabel()) + ",Series," + csv(section.yLabel()));
-                        for (SeriesPoint p : points) {
-                            out.println(csv(p.label()) + "," + csv(p.series()) + "," + p.value());
-                        }
-                    }
-                } else {
-                    List<Point> points = AnalyticsApi.points(section.endpoint(), filters);
-                    if (points.isEmpty()) {
-                        out.println("No data for this period");
-                    } else {
-                        out.println(csv(section.xLabel()) + "," + csv(section.yLabel()));
-                        for (Point p : points) {
-                            out.println(csv(p.label()) + "," + p.value());
-                        }
-                    }
-                }
-
-                out.println();
-            }
+        int i = 0;
+        for (String key : plot.getDataset().getKeys()) {
+            plot.setSectionPaint(key, SERIES[i++ % SERIES.length]);
         }
     }
 
-    /** Quotes a value if it contains a comma or quote. */
-    private static String csv(String value) {
-        if (value == null) return "";
-        if (value.contains(",") || value.contains("\"")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
+    private static void styleXy(XYPlot plot) {
+
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(Theme.GRID);
+        plot.setRangeGridlinePaint(Theme.GRID);
+        plot.setOutlineVisible(false);
+
+        if (plot.getRenderer() instanceof XYLineAndShapeRenderer renderer) {
+            for (int i = 0; i < plot.getDataset().getSeriesCount(); i++) {
+                renderer.setSeriesPaint(i, SERIES[i % SERIES.length]);
+            }
         }
-        return value;
     }
 }

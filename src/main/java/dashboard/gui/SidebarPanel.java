@@ -32,7 +32,7 @@ public class SidebarPanel extends JPanel {
 
         List<String> pages = new ArrayList<>(List.of(
                 "Overview", "Sales", "Inventory", "Products",
-                "Marketing", "Customers", "Reports"));
+                "Marketing", "Customers"));
 
         if (UserSession.getInstance().isManager()) {
             pages.add("Alerts");

@@ -3,6 +3,9 @@ package dashboard.gui;
 import dashboard.database.AnalyticsApi;
 import dashboard.database.SchemaIntrospector.TableMeta;
 
+import dashboard.report.ChartCatalogue;
+import dashboard.report.ChartSpec;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -20,9 +23,6 @@ public class OverviewPanel extends JPanel
 
     private final KpiPanel kpiPanel =
             new KpiPanel();
-
-    private final RevenueChartPanel revenueChartPanel =
-            new RevenueChartPanel();
 
     private final JPanel chartsGrid =
             new JPanel();
@@ -209,11 +209,6 @@ public class OverviewPanel extends JPanel
                 Component.LEFT_ALIGNMENT
         );
 
-
-        chartsGrid.add(
-                revenueChartPanel
-        );
-
         chartsGrid.add(
                 AnalyticsCharts.messageCard(
                         "Loading",
@@ -398,18 +393,26 @@ public class OverviewPanel extends JPanel
         );
 
 
-        JPanel refreshArea =
+        JPanel buttonArea =
                 new JPanel(
                         new FlowLayout(
                                 FlowLayout.RIGHT,
-                                0,
+                                10,
                                 0
                         )
                 );
 
-        refreshArea.setOpaque(false);
+        buttonArea.setOpaque(false);
 
-        refreshArea.add(
+        buttonArea.add(
+                ExportButton.create(
+                        this,
+                        ChartSpec.Page.OVERVIEW,
+                        () -> currentFilter
+                )
+        );
+
+        buttonArea.add(
                 refreshButton
         );
 
@@ -420,7 +423,7 @@ public class OverviewPanel extends JPanel
         );
 
         header.add(
-                refreshArea,
+                buttonArea,
                 BorderLayout.EAST
         );
 
@@ -454,16 +457,6 @@ public class OverviewPanel extends JPanel
     private void refreshEverything() {
 
         refreshKpis();
-
-
-        revenueChartPanel.applyFilters(
-                currentFilter.year(),
-                currentFilter.scope(),
-                currentFilter.period(),
-                currentFilter.region()
-        );
-
-
         refreshOverviewCharts();
     }
 
@@ -526,10 +519,6 @@ public class OverviewPanel extends JPanel
         chartsGrid.removeAll();
 
         chartsGrid.add(
-                revenueChartPanel
-        );
-
-        chartsGrid.add(
                 AnalyticsCharts.messageCard(
                         "Loading",
                         "Fetching dashboard analytics..."
@@ -550,112 +539,30 @@ public class OverviewPanel extends JPanel
             protected List<JPanel> doInBackground()
                     throws Exception {
 
+                /*
+                 * The four Overview charts are declared in ChartCatalogue,
+                 * three of them owned by other pages. Titles, descriptions,
+                 * axis labels, endpoints and drill-downs all come from the
+                 * spec, so the Overview copy of a chart cannot drift from
+                 * the page that owns it.
+                 */
                 List<JPanel> loaded =
                         new ArrayList<>();
 
 
-                Map<String, String> params =
-                        currentFilter.toParams();
+                for (
+                        ChartSpec spec :
+                        ChartCatalogue.overviewCharts()
+                ) {
 
-
-                // =================================================
-                // REVENUE BY REGION
-                // =================================================
-
-                loaded.add(
-                        AnalyticsCharts.bar(
-                                "Revenue by Region",
-                                "Region",
-                                "Revenue ($)",
-                                AnalyticsApi.points(
-                                        "api/sales/revenue-region",
-                                        params
-                                ),
-                                "Revenue",
-                                false,
-                                region ->
-                                        DrilldownDialog.showSales(
-                                                OverviewPanel.this,
-                                                null,
-                                                null,
-                                                region
-                                        )
-                        )
-                );
-
-
-                // =================================================
-                // REVENUE BY CATEGORY
-                // =================================================
-
-                loaded.add(
-                        AnalyticsCharts.bar(
-                                "Revenue by Category",
-                                "Category",
-                                "Revenue ($)",
-                                AnalyticsApi.points(
-                                        "api/products/revenue-category",
-                                        params
-                                ),
-                                "Revenue",
-                                false,
-                                category ->
-                                        DrilldownDialog.showSales(
-                                                OverviewPanel.this,
-                                                null,
-                                                category,
-                                                currentFilter.region()
-                                        )
-                        )
-                );
-
-
-                // =================================================
-                // STOCK BY WAREHOUSE
-                // CLICK = INVENTORY DRILL-DOWN
-                // =================================================
-
-                loaded.add(
-                        AnalyticsCharts.bar(
-                                "Stock by Warehouse",
-                                "Warehouse",
-                                "Units in Stock",
-                                AnalyticsApi.points(
-                                        "api/inventory/stock-warehouse",
-                                        params
-                                ),
-                                "Stock",
-                                false,
-                                warehouse ->
-                                        DrilldownDialog.showInventory(
-                                                OverviewPanel.this,
-                                                warehouse,
-                                                currentFilter.toParams()
-                                        )
-                        )
-                );
-
-
-                // =================================================
-                // MARKETING SPEND BY CHANNEL
-                // CLICK PIE SECTION = MARKETING DRILL-DOWN
-                // =================================================
-
-                loaded.add(
-                        AnalyticsCharts.pie(
-                                "Marketing Spend by Channel",
-                                AnalyticsApi.points(
-                                        "api/marketing/spend-channel",
-                                        params
-                                ),
-                                channel ->
-                                        DrilldownDialog.showMarketing(
-                                                OverviewPanel.this,
-                                                channel,
-                                                currentFilter.toParams()
-                                        )
-                        )
-                );
+                    loaded.add(
+                            CatalogueRenderer.card(
+                                    spec,
+                                    currentFilter,
+                                    OverviewPanel.this
+                            )
+                    );
+                }
 
 
                 return loaded;
@@ -666,14 +573,6 @@ public class OverviewPanel extends JPanel
             protected void done() {
 
                 chartsGrid.removeAll();
-
-
-                /*
-                 * Original Overview Revenue chart.
-                 */
-                chartsGrid.add(
-                        revenueChartPanel
-                );
 
 
                 try {
@@ -696,18 +595,22 @@ public class OverviewPanel extends JPanel
                          * These must match the sizes set in
                          * RevenueChartPanel.configurePanel(), which
                          * shares this grid.
+                         *
+                         * Taller than before: catalogue cards carry a
+                         * title and description above the plot, and at
+                         * 260px the plot area was squeezed to nothing.
                          */
                         chart.setPreferredSize(
                                 new Dimension(
                                         420,
-                                        260
+                                        380
                                 )
                         );
 
                         chart.setMinimumSize(
                                 new Dimension(
                                         280,
-                                        230
+                                        340
                                 )
                         );
 

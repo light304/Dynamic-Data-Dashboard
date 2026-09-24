@@ -92,7 +92,6 @@ public class DashboardFrame extends JFrame {
         ProductsPanel products = new ProductsPanel();
         MarketingPanel marketing = new MarketingPanel();
         CustomersPanel customers = new CustomersPanel();
-        ReportsPanel reports = new ReportsPanel();
 
         filterablePages.put("Overview", overview);
         filterablePages.put("Sales", sales);
@@ -100,7 +99,6 @@ public class DashboardFrame extends JFrame {
         filterablePages.put("Products", products);
         filterablePages.put("Marketing", marketing);
         filterablePages.put("Customers", customers);
-        filterablePages.put("Reports", reports);
 
         content.add(overview, "Overview");
         content.add(sales, "Sales");
@@ -108,7 +106,6 @@ public class DashboardFrame extends JFrame {
         content.add(products, "Products");
         content.add(marketing, "Marketing");
         content.add(customers, "Customers");
-        content.add(reports, "Reports");
 
         if (UserSession.getInstance().isManager()) {
             AlertsPanel alerts = new AlertsPanel();
