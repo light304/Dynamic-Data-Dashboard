@@ -12,23 +12,12 @@ import java.util.List;
 
 public class AlertsPanel extends JPanel {
 
-    private static final Color BACKGROUND =
-            new Color(245, 247, 250);
-
-    private static final Color PRIMARY =
-            new Color(31, 41, 55);
-
-    private static final Color SECONDARY =
-            new Color(100, 116, 139);
-
-    private static final Color BORDER =
-            new Color(226, 232, 240);
-
-    private static final Color ACCENT =
-            new Color(0, 188, 225);
-
-    private static final Color WARNING =
-            new Color(220, 38, 38);
+    private static final Color BACKGROUND = Theme.PAGE_BG;
+    private static final Color PRIMARY    = Theme.TEXT;
+    private static final Color SECONDARY  = Theme.TEXT_MUTED;
+    private static final Color BORDER     = Theme.BORDER;
+    private static final Color ACCENT     = Theme.ACCENT;
+    private static final Color WARNING    = Theme.CRITICAL;
 
 
     // =========================================================
@@ -267,11 +256,7 @@ public class AlertsPanel extends JPanel {
                 );
 
         activeHeading.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        17
-                )
+                Theme.CHART_TITLE
         );
 
         activeHeading.setForeground(PRIMARY);
@@ -283,11 +268,7 @@ public class AlertsPanel extends JPanel {
                 );
 
         activeDescription.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.BODY
         );
 
         activeDescription.setForeground(SECONDARY);
@@ -364,6 +345,8 @@ public class AlertsPanel extends JPanel {
                 )
         );
 
+        table.setSelectionForeground(PRIMARY);
+
         table.setFillsViewportHeight(true);
 
         table.setAutoCreateRowSorter(true);
@@ -378,11 +361,7 @@ public class AlertsPanel extends JPanel {
 
         table.getTableHeader()
                 .setFont(
-                        new Font(
-                                "SansSerif",
-                                Font.BOLD,
-                                12
-                        )
+                        Theme.BODY_STRONG
                 );
 
 
@@ -609,11 +588,7 @@ public class AlertsPanel extends JPanel {
                 );
 
         heading.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        17
-                )
+                Theme.CHART_TITLE
         );
 
         heading.setForeground(PRIMARY);
@@ -625,11 +600,7 @@ public class AlertsPanel extends JPanel {
                 );
 
         description.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        12
-                )
+                Theme.BODY
         );
 
         description.setForeground(SECONDARY);
@@ -774,11 +745,7 @@ public class AlertsPanel extends JPanel {
                 new JLabel(title);
 
         label.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        12
-                )
+                Theme.BODY_STRONG
         );
 
         label.setForeground(PRIMARY);
@@ -788,11 +755,7 @@ public class AlertsPanel extends JPanel {
                 new JLabel(description);
 
         descriptionLabel.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        10
-                )
+                Theme.SMALL
         );
 
         descriptionLabel.setForeground(SECONDARY);
@@ -822,11 +785,7 @@ public class AlertsPanel extends JPanel {
                 new JLabel("  %");
 
         percent.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        12
-                )
+                Theme.BODY_STRONG
         );
 
         percent.setForeground(SECONDARY);
@@ -1203,11 +1162,7 @@ public class AlertsPanel extends JPanel {
             );
 
             alertCount.setForeground(
-                    new Color(
-                            22,
-                            163,
-                            74
-                    )
+                    Theme.GOOD
             );
 
         } else if (count == 1) {
@@ -1304,11 +1259,7 @@ public class AlertsPanel extends JPanel {
     ) {
 
         button.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        13
-                )
+                Theme.BODY_STRONG
         );
 
         button.setForeground(
