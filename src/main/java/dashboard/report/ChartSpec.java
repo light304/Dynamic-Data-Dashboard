@@ -25,8 +25,18 @@ public record ChartSpec(
         String caveat,
         Drilldown drilldown,
         boolean horizontal,
-        String status
+        String status,
+        String reading,
+        String secondEndpoint,
+        String secondSeries
 ) {
+
+    /**
+     * Placeholder x-axis label for a chart over time. The real word depends
+     * on the filter, so it is filled in by forScope() when the chart is
+     * drawn: "Months" or "Days".
+     */
+    public static final String TIME_AXIS = "@time";
 
     /** Which dashboard page the chart belongs to. */
     public enum Page {
@@ -51,7 +61,17 @@ public record ChartSpec(
         MULTI_LINE,
         PIE,
         SCATTER,
-        KPI_TABLE
+        KPI_TABLE,
+        /** Filled line: a total that builds over time. Always starts at zero. */
+        AREA,
+        /** Donut: parts of a whole. Best with five or fewer slices. */
+        RING,
+        /**
+         * Columns on the left axis with a line on the right axis, for two
+         * measures on different scales. The first series is drawn as
+         * columns and the second as the line.
+         */
+        COMBO
     }
 
     /** Where the chart appears. */
@@ -76,7 +96,12 @@ public record ChartSpec(
 
     /** Grouped and multi-series charts need seriesPoints() rather than points(). */
     public boolean isSeries() {
-        return kind == Kind.GROUPED_BAR || kind == Kind.MULTI_LINE;
+        return kind == Kind.GROUPED_BAR || kind == Kind.MULTI_LINE || kind == Kind.COMBO;
+    }
+
+    /** True when the chart merges a second endpoint into its data. */
+    public boolean hasSecondSource() {
+        return secondEndpoint != null && !secondEndpoint.isBlank();
     }
 
     /** Scatters need xyPoints(). */
@@ -95,15 +120,47 @@ public record ChartSpec(
      * product.
      */
     public boolean showsDataTable() {
-        if (kind != Kind.BAR && kind != Kind.PIE) return false;
+        if (kind != Kind.BAR && kind != Kind.PIE && kind != Kind.RING) return false;
         return !"Month".equals(xLabel);
+    }
+
+    /**
+     * This spec with a TIME_AXIS x-label replaced by the unit the chart
+     * actually plots at the given filter scope. Any other spec is returned
+     * unchanged.
+     *
+     * Must match server.js: Yearly and Quarterly scope group by month;
+     * Monthly and Weekly scope group by day.
+     */
+    public ChartSpec forScope(String scope) {
+
+        if (!TIME_AXIS.equals(xLabel)) return this;
+
+        boolean byDay = "Monthly".equalsIgnoreCase(scope)
+                || "Weekly".equalsIgnoreCase(scope);
+
+        return new ChartSpec(
+                id, page, kind, source, title,
+                byDay ? "Days" : "Months",
+                yLabel, seriesName, endpoint, description, caveat,
+                drilldown, horizontal, status, reading,
+                secondEndpoint, secondSeries);
+    }
+
+    /**
+     * True for a bar chart whose bars are the regions, so each bar takes
+     * that region's colour from Theme instead of every bar sharing one.
+     */
+    public boolean categoriesAreRegions() {
+        return kind == Kind.BAR && "Region".equals(xLabel);
     }
 
     /** Description plus any region caveat, for the PDF body text. */
     public String fullDescription() {
-        return caveat == null || caveat.isBlank()
-                ? description
-                : description + " " + caveat;
+        StringBuilder out = new StringBuilder(description == null ? "" : description);
+        if (reading != null && !reading.isBlank()) out.append(' ').append(reading);
+        if (caveat != null && !caveat.isBlank())   out.append(' ').append(caveat);
+        return out.toString();
     }
 
     // ---------------------------------------------------------------
@@ -135,6 +192,9 @@ public record ChartSpec(
         private Drilldown drilldown = Drilldown.NONE;
         private boolean horizontal = false;
         private String status = null;
+        private String reading = null;
+        private String secondEndpoint = null;
+        private String secondSeries = null;
 
         private Builder(String id, Page page, Kind kind) {
             this.id = id;
@@ -151,6 +211,19 @@ public record ChartSpec(
         public Builder drilldown(Drilldown value) { this.drilldown = value; return this; }
         public Builder status(String value)       { this.status = value; return this; }
 
+        /** How to read the chart and what it means, shown in the (i) popup. */
+        public Builder reading(String value)      { this.reading = value; return this; }
+
+        /**
+         * Merges a second endpoint into the chart. The first endpoint keeps
+         * the name given to series(); the second gets the name given here.
+         */
+        public Builder second(String endpoint, String seriesName) {
+            this.secondEndpoint = endpoint;
+            this.secondSeries = seriesName;
+            return this;
+        }
+
         public Builder axes(String x, String y) {
             this.xLabel = x;
             this.yLabel = y;
@@ -166,7 +239,8 @@ public record ChartSpec(
             return new ChartSpec(
                     id, page, kind, source, title, xLabel, yLabel,
                     seriesName, endpoint, description, caveat,
-                    drilldown, horizontal, status
+                    drilldown, horizontal, status,
+                    reading, secondEndpoint, secondSeries
             );
         }
     }
