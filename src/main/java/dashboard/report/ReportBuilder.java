@@ -11,6 +11,7 @@ import dashboard.database.AnalyticsApi.Point;
 import dashboard.database.AnalyticsApi.SeriesPoint;
 import dashboard.database.AnalyticsApi.XYPoint;
 
+import dashboard.gui.CategoryColourRenderer;
 import dashboard.gui.Theme;
 import dashboard.report.ChartSpec.Page;
 
@@ -58,10 +59,10 @@ public final class ReportBuilder {
     private static final Font MUTED =
             new Font(Font.HELVETICA, 9, Font.ITALIC, Theme.TEXT_MUTED);
 
-    /** Same five series colours the dashboard draws with. */
+    /** Same six series colours the dashboard draws with. */
     private static final Color[] SERIES = {
             Theme.SERIES_1, Theme.SERIES_2, Theme.SERIES_3,
-            Theme.SERIES_4, Theme.SERIES_5
+            Theme.SERIES_4, Theme.SERIES_5, Theme.SERIES_6
     };
 
     private ReportBuilder() {}
@@ -159,8 +160,11 @@ public final class ReportBuilder {
     }
 
     private static void addChartBlock(Document doc,
-                                      ChartSpec spec,
+                                      ChartSpec catalogueSpec,
                                       Map<String, String> filters) throws Exception {
+
+        // "Months" or "Days", to match what the filter makes the chart plot.
+        ChartSpec spec = catalogueSpec.forScope(filters.get("scope"));
 
         JFreeChart chart = buildChart(spec, filters);
 
@@ -256,8 +260,11 @@ public final class ReportBuilder {
 
         JFreeChart chart = switch (spec.kind()) {
             case BAR, LINE                -> singleSeries(spec, filters);
+            case AREA                     -> area(spec, filters);
             case GROUPED_BAR, MULTI_LINE  -> multiSeries(spec, filters);
-            case PIE                      -> pie(spec, filters);
+            case COMBO                    -> combo(spec, filters);
+            case PIE                      -> pie(spec, filters, false);
+            case RING                     -> pie(spec, filters, true);
             case SCATTER                  -> scatter(spec, filters);
             case KPI_TABLE                -> null;
         };
@@ -292,10 +299,34 @@ public final class ReportBuilder {
                         dataset, orientation, false, false, false);
     }
 
+    private static JFreeChart area(ChartSpec spec,
+                                   Map<String, String> filters) throws Exception {
+
+        List<Point> points = AnalyticsApi.points(spec.endpoint(), filters);
+        if (points.isEmpty()) return null;
+
+        String key = spec.seriesName() == null ? spec.yLabel() : spec.seriesName();
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (Point p : points) {
+            dataset.addValue(p.value(), key, p.label());
+        }
+
+        return ChartFactory.createAreaChart(
+                null, spec.xLabel(), spec.yLabel(),
+                dataset, PlotOrientation.VERTICAL, false, false, false);
+    }
+
+    /**
+     * GROUPED_BAR and MULTI_LINE data, merged from a second endpoint via
+     * ChartData when the spec declares one (see ChartSpec.second()) -
+     * the same merge the screen performs, so the PDF cannot show a
+     * different picture than the card it was exported from.
+     */
     private static JFreeChart multiSeries(ChartSpec spec,
                                           Map<String, String> filters) throws Exception {
 
-        List<SeriesPoint> points = AnalyticsApi.seriesPoints(spec.endpoint(), filters);
+        List<SeriesPoint> points = ChartData.series(spec, filters);
         if (points.isEmpty()) return null;
 
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -316,8 +347,107 @@ public final class ReportBuilder {
                         dataset, orientation, true, false, false);
     }
 
-    private static JFreeChart pie(ChartSpec spec,
-                                  Map<String, String> filters) throws Exception {
+    /**
+     * Columns on the left axis, a line on the right axis - the PDF
+     * equivalent of AnalyticsCharts.combo(). Kept as its own method rather
+     * than shared with the screen version because ChartPanel/Swing types
+     * are not available on this side of the split.
+     */
+    private static JFreeChart combo(ChartSpec spec,
+        Map<String, String> filters) throws Exception {
+
+        List<SeriesPoint> points = ChartData.series(spec, filters);
+        if (points.isEmpty()) return null;
+
+        String[] axes = spec.yLabel() == null ? new String[0] : spec.yLabel().split("\\|", 2);
+        String leftLabel = axes.length > 0 ? axes[0].trim() : "";
+        String rightLabel = axes.length > 1 ? axes[1].trim() : "";
+
+        String columnSeries = spec.seriesName();
+        boolean found = false;
+        for (SeriesPoint p : points) {
+            if (p.series().equals(columnSeries)) { found = true; break; }
+        }
+        if (!found) columnSeries = points.get(0).series();
+
+        java.util.Set<String> labels = new java.util.LinkedHashSet<>();
+        java.util.Set<String> columnKeys = new java.util.LinkedHashSet<>();
+        java.util.Set<String> lineKeys = new java.util.LinkedHashSet<>();
+
+        for (SeriesPoint p : points) {
+            labels.add(p.label());
+            (p.series().equals(columnSeries) ? columnKeys : lineKeys).add(p.series());
+        }
+
+        DefaultCategoryDataset barData = new DefaultCategoryDataset();
+        DefaultCategoryDataset lineData = new DefaultCategoryDataset();
+
+        for (String key : columnKeys) {
+            for (String label : labels) barData.addValue((Number) null, key, label);
+        }
+        for (String key : lineKeys) {
+            for (String label : labels) lineData.addValue((Number) null, key, label);
+        }
+        for (SeriesPoint p : points) {
+            (p.series().equals(columnSeries) ? barData : lineData)
+                    .setValue(p.value(), p.series(), p.label());
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null, spec.xLabel(), leftLabel, barData,
+                PlotOrientation.VERTICAL, true, false, false);
+
+        CategoryPlot plot = chart.getCategoryPlot();
+
+        Color columnColour = SERIES[0];
+        Color lineColour = SERIES[2];
+
+        // Left axis (the columns). styleCategory() skips number-axis
+        // formatting entirely for COMBO charts (it has no way to tell
+        // which of the two axes it would be touching), so this is the
+        // only place the left axis gets its round-number range and
+        // compact tick labels.
+        if (plot.getRangeAxis(0) instanceof org.jfree.chart.axis.NumberAxis left) {
+            applyNumberAxis(left, rangeOf(barData), true, leftLabel);
+        }
+
+        org.jfree.chart.axis.NumberAxis right =
+                new org.jfree.chart.axis.NumberAxis(rightLabel);
+        applyNumberAxis(right, rangeOf(lineData), false, rightLabel);
+        right.setLabelPaint(lineColour);
+        right.setTickLabelPaint(lineColour);
+
+        plot.setRangeAxis(1, right);
+        plot.setDataset(1, lineData);
+        plot.mapDatasetToRangeAxis(1, 1);
+
+        org.jfree.chart.renderer.category.LineAndShapeRenderer lines =
+                new org.jfree.chart.renderer.category.LineAndShapeRenderer(true, true);
+
+        for (int i = 0; i < lineData.getRowCount(); i++) {
+            lines.setSeriesPaint(i, lineColour);
+            lines.setSeriesStroke(i, new BasicStroke(2.2f));
+        }
+
+        plot.setRenderer(1, lines);
+        plot.setDatasetRenderingOrder(org.jfree.chart.plot.DatasetRenderingOrder.FORWARD);
+
+        // style(chart, spec) still runs styleCategory() on dataset 0 (the
+        // columns) below; tint the columns and the left axis to match here,
+        // since styleCategory has no knowledge of the second series.
+        if (plot.getRenderer(0) instanceof BarRenderer bars) {
+            for (int i = 0; i < barData.getRowCount(); i++) {
+                bars.setSeriesPaint(i, columnColour);
+            }
+        }
+        plot.getRangeAxis(0).setLabelPaint(columnColour);
+        plot.getRangeAxis(0).setTickLabelPaint(columnColour);
+
+        return chart;
+    }
+
+    private static JFreeChart pie(ChartSpec spec, Map<String, String> filters,
+                                  boolean donut) throws Exception {
 
         List<Point> points = AnalyticsApi.points(spec.endpoint(), filters);
         if (points.isEmpty()) return null;
@@ -327,7 +457,9 @@ public final class ReportBuilder {
             dataset.setValue(p.label(), p.value());
         }
 
-        return ChartFactory.createPieChart(null, dataset, true, false, false);
+        return donut
+                ? ChartFactory.createRingChart(null, dataset, true, false, false)
+                : ChartFactory.createPieChart(null, dataset, true, false, false);
     }
 
     private static JFreeChart scatter(ChartSpec spec,
@@ -358,6 +490,10 @@ public final class ReportBuilder {
     // Dispatches on the plot, because only a bar or line chart has a
     // CategoryPlot. The old code called getCategoryPlot() unconditionally,
     // which would have thrown on the first pie.
+    //
+    // Axis numbers are shortened the same way the screen shortens them
+    // (AxisScale), so a chart does not read differently in the PDF than
+    // it did on the page it was exported from.
     // =====================================================
 
     private static void style(JFreeChart chart, ChartSpec spec) {
@@ -369,7 +505,7 @@ public final class ReportBuilder {
         } else if (chart.getPlot() instanceof PiePlot) {
             stylePie(chart);
         } else if (chart.getPlot() instanceof XYPlot plot) {
-            styleXy(plot);
+            styleXy(plot, spec);
         }
     }
 
@@ -381,11 +517,23 @@ public final class ReportBuilder {
 
         int rows = plot.getDataset() == null ? 0 : plot.getDataset().getRowCount();
 
+        boolean isCombo = spec.kind() == ChartSpec.Kind.COMBO;
+
+        // Region bars each take their region's colour, as on screen.
+        if (spec.categoriesAreRegions()
+                && plot.getRenderer() instanceof BarRenderer) {
+            plot.setRenderer(new CategoryColourRenderer(Theme::regionColour));
+        }
+
         if (plot.getRenderer() instanceof BarRenderer bar) {
             bar.setShadowVisible(false);
             bar.setBarPainter(new StandardBarPainter());
-            for (int i = 0; i < rows; i++) {
-                bar.setSeriesPaint(i, SERIES[i % SERIES.length]);
+            // COMBO already painted its column series in combo(); a second
+            // pass here would flatten it back to the default palette.
+            if (!isCombo) {
+                for (int i = 0; i < rows; i++) {
+                    bar.setSeriesPaint(i, SERIES[i % SERIES.length]);
+                }
             }
         } else {
             for (int i = 0; i < rows; i++) {
@@ -403,6 +551,18 @@ public final class ReportBuilder {
                         : CategoryLabelPositions.STANDARD);
 
         plot.getDomainAxis().setMaximumCategoryLabelWidthRatio(1.0f);
+
+        // COMBO built and styled both range axes itself, since the second
+        // (right-hand) axis and its own tick formatting exist outside what
+        // this method can see from a single CategoryPlot pass.
+        if (isCombo) return;
+
+        boolean includeZero = spec.kind() != ChartSpec.Kind.LINE
+                && spec.kind() != ChartSpec.Kind.MULTI_LINE;
+
+        if (plot.getRangeAxis() instanceof org.jfree.chart.axis.NumberAxis range) {
+            applyNumberAxis(range, rangeOf(plot.getDataset()), includeZero, spec.yLabel());
+        }
     }
 
     private static void stylePie(JFreeChart chart) {
@@ -421,9 +581,19 @@ public final class ReportBuilder {
         for (String key : plot.getDataset().getKeys()) {
             plot.setSectionPaint(key, SERIES[i++ % SERIES.length]);
         }
+
+        if (chart.getPlot() instanceof org.jfree.chart.plot.RingPlot ringPlot) {
+            ringPlot.setSectionDepth(0.42);
+            ringPlot.setSeparatorsVisible(false);
+        }
+
+        plot.setLabelGenerator(new org.jfree.chart.labels.StandardPieSectionLabelGenerator(
+                "{0}: {2}",
+                new java.text.DecimalFormat("#,##0"),
+                new java.text.DecimalFormat("0%")));
     }
 
-    private static void styleXy(XYPlot plot) {
+    private static void styleXy(XYPlot plot, ChartSpec spec) {
 
         plot.setBackgroundPaint(Color.WHITE);
         plot.setDomainGridlinePaint(Theme.GRID);
@@ -435,5 +605,66 @@ public final class ReportBuilder {
                 renderer.setSeriesPaint(i, SERIES[i % SERIES.length]);
             }
         }
+
+        if (plot.getDomainAxis() instanceof org.jfree.chart.axis.NumberAxis domain) {
+            applyNumberAxis(domain, xyRange(plot.getDataset(), true), false, spec.xLabel());
+        }
+
+        if (plot.getRangeAxis() instanceof org.jfree.chart.axis.NumberAxis range) {
+            applyNumberAxis(range, xyRange(plot.getDataset(), false), false, spec.yLabel());
+        }
+    }
+
+    // =====================================================
+    // Axis ranges and compact tick formatting - see dashboard.gui.AxisScale
+    // for the maths. Duplicated here in miniature (rangeOf/xyRange) rather
+    // than sharing AnalyticsCharts' private helpers, since those operate on
+    // Swing's ChartPanel-bound charts and this side never touches Swing.
+    // =====================================================
+
+    private static void applyNumberAxis(org.jfree.chart.axis.NumberAxis axis,
+                                        double[] dataRange, boolean includeZero,
+                                        String label) {
+
+        dashboard.gui.AxisScale.Bounds bounds =
+                dashboard.gui.AxisScale.bounds(dataRange[0], dataRange[1], includeZero, 5);
+
+        axis.setRange(bounds.min(), bounds.max());
+        axis.setAutoTickUnitSelection(false);
+        axis.setTickUnit(new org.jfree.chart.axis.NumberTickUnit(
+                bounds.step(), dashboard.gui.AxisScale.formatFor(label)));
+    }
+
+    private static double[] rangeOf(org.jfree.data.category.CategoryDataset dataset) {
+
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        for (int row = 0; row < dataset.getRowCount(); row++) {
+            for (int col = 0; col < dataset.getColumnCount(); col++) {
+                Number n = dataset.getValue(row, col);
+                if (n == null) continue;
+                min = Math.min(min, n.doubleValue());
+                max = Math.max(max, n.doubleValue());
+            }
+        }
+
+        return min > max ? new double[]{0, 1} : new double[]{min, max};
+    }
+
+    private static double[] xyRange(org.jfree.data.xy.XYDataset dataset, boolean domain) {
+
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        for (int s = 0; s < dataset.getSeriesCount(); s++) {
+            for (int i = 0; i < dataset.getItemCount(s); i++) {
+                double v = domain ? dataset.getXValue(s, i) : dataset.getYValue(s, i);
+                min = Math.min(min, v);
+                max = Math.max(max, v);
+            }
+        }
+
+        return min > max ? new double[]{0, 1} : new double[]{min, max};
     }
 }

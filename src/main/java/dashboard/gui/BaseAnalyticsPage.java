@@ -1,14 +1,21 @@
 package dashboard.gui;
+
 import dashboard.report.ChartSpec.Page;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * Shared shell for the Sales, Products, Inventory, Marketing and Customers
+ * pages: a header with Export and Refresh, and a grid of chart cards that
+ * fills the rest of the window.
+ *
+ * There is no scroll pane. The cards divide whatever room the window gives
+ * them (see ChartGrid), so a page is always seen whole.
+ */
 public abstract class BaseAnalyticsPage extends JPanel implements FilterableDashboardPage {
 
     protected static final Color BACKGROUND = Theme.PAGE_BG;
@@ -18,35 +25,27 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
 
     protected DashboardFilter filter = DashboardFilter.defaults();
 
-    /*
-     * Shared chart area for all analytics pages.
-     *
-     * Two columns on normal dashboard sizes.
-     * Vertical scrolling only.
-     */
-    protected final JPanel charts = new ResponsiveGridPanel();
+    /** The chart area. Filled by ChartGrid. */
+    protected final JPanel charts = ChartGrid.create(BACKGROUND);
 
     private final JButton refreshButton = new JButton("Refresh");
 
     protected BaseAnalyticsPage(String title, String subtitle, Page page) {
 
-        setLayout(new BorderLayout(0, 18));
+        setLayout(new BorderLayout(0, 10));
         setBackground(BACKGROUND);
-        setBorder(new EmptyBorder(20, 25, 25, 25));
+        setBorder(new EmptyBorder(14, 22, 16, 22));
 
-        /*
-         * HEADER
-         */
+        // ----- header -----
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(new EmptyBorder(0, 0, 5, 0));
 
         JPanel titleArea = new JPanel();
         titleArea.setOpaque(false);
         titleArea.setLayout(new BoxLayout(titleArea, BoxLayout.Y_AXIS));
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(Theme.PAGE_TITLE);
+        titleLabel.setFont(Theme.PAGE_HEADING);
         titleLabel.setForeground(PRIMARY);
 
         JLabel subtitleLabel = new JLabel(subtitle);
@@ -54,35 +53,21 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
         subtitleLabel.setForeground(SECONDARY);
 
         titleArea.add(titleLabel);
-        titleArea.add(Box.createVerticalStrut(4));
+        titleArea.add(Box.createVerticalStrut(2));
         titleArea.add(subtitleLabel);
 
-        /*
-         * REFRESH BUTTON
-         */
         refreshButton.setFont(Theme.BODY_STRONG);
-
         refreshButton.setForeground(Color.WHITE);
         refreshButton.setBackground(ACCENT);
-
         refreshButton.setOpaque(true);
         refreshButton.setContentAreaFilled(true);
         refreshButton.setBorderPainted(false);
         refreshButton.setFocusPainted(false);
-
-        refreshButton.setCursor(
-                Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        );
-
-        refreshButton.setPreferredSize(
-                new Dimension(115, 38)
-        );
-
+        refreshButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        refreshButton.setPreferredSize(new Dimension(115, 36));
         refreshButton.addActionListener(e -> refreshData());
 
-        JPanel buttonArea =
-            new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-
+        JPanel buttonArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonArea.setOpaque(false);
         buttonArea.add(ExportButton.create(this, page, () -> filter));
         buttonArea.add(refreshButton);
@@ -91,180 +76,59 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
         header.add(buttonArea, BorderLayout.EAST);
 
         add(header, BorderLayout.NORTH);
-
-        /*
-         * CHART AREA
-         */
-        charts.setBackground(BACKGROUND);
-
-        /*
-         * 2-column dashboard structure:
-         *
-         * [ Chart 1 ] [ Chart 2 ]
-         *
-         * [ Chart 3 ] [ Chart 4 ]
-         */
-        charts.setLayout(
-                new GridLayout(
-                        0,
-                        2,
-                        18,
-                        18
-                )
-        );
-
-        /*
-         * Adds breathing room beneath the final row.
-         */
-        JPanel chartContainer = new JPanel(new BorderLayout());
-
-        chartContainer.setBackground(BACKGROUND);
-        chartContainer.setBorder(
-                new EmptyBorder(0, 0, 20, 0)
-        );
-
-        chartContainer.add(
-                charts,
-                BorderLayout.NORTH
-        );
-
-        JScrollPane scroll =
-                new JScrollPane(chartContainer);
-
-        scroll.setBorder(null);
-
-        scroll.setHorizontalScrollBarPolicy(
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        );
-
-        scroll.setVerticalScrollBarPolicy(
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
-        );
-
-        scroll.getVerticalScrollBar()
-                .setUnitIncrement(18);
-
-        scroll.getViewport()
-                .setBackground(BACKGROUND);
-
-        add(scroll, BorderLayout.CENTER);
+        add(charts, BorderLayout.CENTER);
     }
 
     @Override
     public void applyFilter(DashboardFilter filter) {
 
-        this.filter =
-                filter == null
-                        ? DashboardFilter.defaults()
-                        : filter;
+        this.filter = filter == null ? DashboardFilter.defaults() : filter;
 
         refreshData();
     }
 
-    /*
-     * Clears the current cards before an asynchronous reload.
-     */
+    /** Called when an asynchronous reload begins. */
     protected final void startRefresh() {
 
         refreshButton.setEnabled(false);
         refreshButton.setText("Loading...");
-
-        charts.removeAll();
-
-        charts.revalidate();
-        charts.repaint();
     }
 
-    /*
-     * Called when loading is complete.
-     */
+    /** Called when loading is complete. */
     protected final void finishRefresh() {
-
-        /*
-         * Give every chart a consistent dashboard height.
-         *
-         * Width is handled automatically by GridLayout.
-         *
-         * Heights allow for the larger axis and tick fonts - smaller
-         * cards squeezed the plot area once the text grew.
-         */
-        for (Component component : charts.getComponents()) {
-
-            if (component instanceof JComponent card) {
-
-                card.setPreferredSize(
-                        new Dimension(450, 410)
-                );
-
-                card.setMinimumSize(
-                        new Dimension(320, 380)
-                );
-            }
-        }
 
         refreshButton.setEnabled(true);
         refreshButton.setText("Refresh");
-
-        charts.revalidate();
-        charts.repaint();
     }
 
     protected final void showError(Exception ex) {
 
-        charts.add(
-                AnalyticsCharts.messageCard(
-                        "Unable to load data",
-                        ex.getMessage()
-                )
-        );
+        ChartGrid.showMessage(charts, "Unable to load data",
+                ex.getMessage() == null ? "The request failed." : ex.getMessage());
     }
 
     protected abstract void refreshData();
 
-    /*
-     * Used by pages that retrieve lists of chart cards
-     * asynchronously.
-     */
-    protected final void loadAsync(
-            Callable<List<JPanel>> loader
-    ) {
+    /** Used by pages that fetch a list of chart cards in the background. */
+    protected final void loadAsync(Callable<List<JPanel>> loader) {
 
         startRefresh();
 
-        charts.add(
-                AnalyticsCharts.messageCard(
-                        "Loading",
-                        "Fetching data..."
-                )
-        );
-
-        charts.revalidate();
-        charts.repaint();
+        ChartGrid.showMessage(charts, "Loading", "Fetching data...");
 
         new SwingWorker<List<JPanel>, Void>() {
 
             @Override
-            protected List<JPanel> doInBackground()
-                    throws Exception {
-
+            protected List<JPanel> doInBackground() throws Exception {
                 return loader.call();
             }
 
             @Override
             protected void done() {
 
-                charts.removeAll();
-
                 try {
-
-                    List<JPanel> loadedCards = get();
-
-                    for (JPanel card : loadedCards) {
-                        charts.add(card);
-                    }
-
+                    ChartGrid.fill(charts, get());
                 } catch (Exception ex) {
-
                     showError(ex);
                 }
 
@@ -272,82 +136,5 @@ public abstract class BaseAnalyticsPage extends JPanel implements FilterableDash
             }
 
         }.execute();
-    }
-
-    /*
-     * Makes the chart area follow the width of the viewport.
-     *
-     * This is important because normal JPanel behaviour can cause
-     * charts to retain a very large preferred width and get cut off.
-     */
-    private static class ResponsiveGridPanel
-            extends JPanel
-            implements Scrollable {
-
-        // The time to wait after a resize event before revalidating the layout.
-         
-        private static final int RESIZE_SETTLE_MS = 10;
-
-        private volatile boolean settled = true;
-
-        private final Timer settleTimer;
-
-        ResponsiveGridPanel() {
-
-            settleTimer = new Timer(RESIZE_SETTLE_MS, e -> {
-                settled = true;
-                revalidate();
-                repaint();
-            });
-
-            settleTimer.setRepeats(false);
-
-            addComponentListener(new ComponentAdapter() {
-                @Override
-                public void componentResized(ComponentEvent e) {
-                    settled = false;
-                    settleTimer.restart();
-                }
-            });
-        }
-
-        @Override
-        public void doLayout() {
-            if (!settled) return;
-            super.doLayout();
-        }
-
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(
-                Rectangle visibleRect,
-                int orientation,
-                int direction
-        ) {
-            return 18;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(
-                Rectangle visibleRect,
-                int orientation,
-                int direction
-        ) {
-            return 100;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
     }
 }

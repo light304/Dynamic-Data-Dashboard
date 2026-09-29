@@ -1734,9 +1734,7 @@ app.get(
               warehouse
                 AS label,
 
-              SUM(
-                stock_level
-              ) AS value
+              ROUND(AVG(stock_level), 1) AS value
 
             FROM inventory
 
