@@ -13,7 +13,6 @@ const dbPath = path.join(
 );
 
 const db = new Database(dbPath);
-
 // ============================================================
 // ALERTS + THRESHOLDS SETUP
 // FR5 - Persistent alert detection with adjustable thresholds
@@ -3851,19 +3850,32 @@ function detectLowStockAlerts() {
       db.prepare(`
           WITH sales_average AS (
 
-              SELECT
+SELECT
                   product_id,
                   SUM(quantity) / 3.0 AS average_sales
 
-              FROM sales
+>>>>>>> Raghav's-Branch3
+
+FROM sales
 
               WHERE order_date >= date(
                   (SELECT MAX(order_date) FROM sales),
                   '-90 day'
               )
 
+
               GROUP BY product_id
+=======
+WHERE order_date >= date(
+    (SELECT MAX(order_date) FROM sales),
+    '-90 day'
+)
+
+GROUP BY product_id
+
+>>>>>>> Stashed changes
           ),
+          
 
           latest_inventory_date AS (
 
