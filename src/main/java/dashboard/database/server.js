@@ -3853,9 +3853,14 @@ function detectLowStockAlerts() {
 
               SELECT
                   product_id,
-                  AVG(quantity) AS average_sales
+                  SUM(quantity) / 3.0 AS average_sales
 
               FROM sales
+
+              WHERE order_date >= date(
+                  (SELECT MAX(order_date) FROM sales),
+                  '-90 day'
+              )
 
               GROUP BY product_id
           ),
