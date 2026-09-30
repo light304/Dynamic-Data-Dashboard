@@ -25,7 +25,7 @@ public class GlobalFilterPanel extends JPanel {
 
     // Dashboard filter controls.
     private final JComboBox<Integer> yearFilter =
-            new JComboBox<>(new Integer[]{2023, 2024});
+            new JComboBox<>(new Integer[]{2023, 2024, 2025});
 
     private final JComboBox<String> scopeFilter =
             new JComboBox<>(new String[]{
@@ -568,7 +568,7 @@ public class GlobalFilterPanel extends JPanel {
          */
         statusTimer.stop();
 
-        yearFilter.setSelectedItem(2023);
+        yearFilter.setSelectedItem(2025);
         scopeFilter.setSelectedItem("Yearly");
         monthFilter.setSelectedItem("January");
         regionFilter.setSelectedItem("All Regions");
