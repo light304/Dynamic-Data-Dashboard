@@ -12,6 +12,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javax.swing.table.DefaultTableModel;
+import java.io.BufferedReader;
+import java.io.FileReader;
 
 /**
  * Main application window.
@@ -152,81 +155,292 @@ public class DashboardFrame extends JFrame {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Select a CSV file");
         chooser.setFileFilter(
-                new javax.swing.filechooser.FileNameExtensionFilter("CSV files", "csv"));
-
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
+                new javax.swing.filechooser.FileNameExtensionFilter(
+                        "CSV files", "csv"
+                )
+        );
+    
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+    
         java.io.File file = chooser.getSelectedFile();
+    
+        // Preview the CSV before uploading
+        if (!showCsvPreview(file)) {
+            return;
+        }
+    
+        // Existing loading popup
         JDialog loading = new JDialog(this, "Uploading", true);
+    
         JPanel body = new JPanel(new BorderLayout(0, 10));
-        body.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
-
-        body.add(new JLabel("Loading " + file.getName() + "..."), BorderLayout.NORTH);
-
+        body.setBorder(
+                BorderFactory.createEmptyBorder(20, 25, 20, 25)
+        );
+    
+        body.add(
+                new JLabel("Loading " + file.getName() + "..."),
+                BorderLayout.NORTH
+        );
+    
         JProgressBar bar = new JProgressBar();
         bar.setIndeterminate(true);
+    
         body.add(bar, BorderLayout.CENTER);
-
+    
         loading.setContentPane(body);
         loading.pack();
         loading.setLocationRelativeTo(this);
-        loading.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-
+        loading.setDefaultCloseOperation(
+                JDialog.DO_NOTHING_ON_CLOSE
+        );
+    
         new SwingWorker<AnalyticsApi.UploadResult, Void>() {
+    
             @Override
-            protected AnalyticsApi.UploadResult doInBackground() throws Exception {
-                return AnalyticsApi.upload(file.getAbsolutePath());
+            protected AnalyticsApi.UploadResult doInBackground()
+                    throws Exception {
+    
+                return AnalyticsApi.upload(
+                        file.getAbsolutePath()
+                );
             }
-
+    
             @Override
             protected void done() {
+    
                 loading.dispose();
                 setCursor(Cursor.getDefaultCursor());
+    
                 try {
+    
                     AnalyticsApi.UploadResult result = get();
-
+    
                     if (result.success()) {
+    
                         String message =
-                            "Loaded " + result.loaded() + " of " + result.totalRows()
-                            + " rows into " + result.table() + ".\n"
-                            + result.rejected() + " row(s) rejected.";
-
+                                "Loaded "
+                                + result.loaded()
+                                + " of "
+                                + result.totalRows()
+                                + " rows into "
+                                + result.table()
+                                + ".\n"
+                                + result.rejected()
+                                + " row(s) rejected.";
+    
                         if (!result.rejectedDetail().isEmpty()) {
-                            message += "\n\n" + String.join("\n", result.rejectedDetail());
-                            if (result.rejected() > result.rejectedDetail().size()) {
+    
+                            message += "\n\n"
+                                    + String.join(
+                                            "\n",
+                                            result.rejectedDetail()
+                                    );
+    
+                            if (result.rejected()
+                                    > result.rejectedDetail().size()) {
+    
                                 message += "\n... and "
-                                        + (result.rejected() - result.rejectedDetail().size())
+                                        + (result.rejected()
+                                        - result.rejectedDetail().size())
                                         + " more";
                             }
                         }
-
+    
                         JOptionPane.showMessageDialog(
-                                DashboardFrame.this, message,
-                                "Upload Complete", JOptionPane.INFORMATION_MESSAGE
-                            );
-
-                        filterablePages.keySet()
-                                .forEach(DashboardFrame.this::applyFilterToPage);
+                                DashboardFrame.this,
+                                message,
+                                "Upload Complete",
+                                JOptionPane.INFORMATION_MESSAGE
+                        );
+    
+                        // Refresh all dashboard pages
+                        filterablePages
+                                .keySet()
+                                .forEach(
+                                        DashboardFrame.this::applyFilterToPage
+                                );
+    
                     } else {
+    
                         JOptionPane.showMessageDialog(
                                 DashboardFrame.this,
                                 result.error(),
                                 "Upload Failed",
-                                JOptionPane.ERROR_MESSAGE);
+                                JOptionPane.ERROR_MESSAGE
+                        );
                     }
+    
                 } catch (Exception ex) {
+    
                     JOptionPane.showMessageDialog(
                             DashboardFrame.this,
                             "Upload failed: " + ex,
                             "Upload Failed",
-                            JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.ERROR_MESSAGE
+                    );
                 }
             }
+    
         }.execute();
-
+    
         loading.setVisible(true);
     }
-
+    
+    
+    /**
+     * Displays the selected CSV in a table before it is uploaded.
+     *
+     * @return true if the user confirms the upload,
+     *         false if they cancel.
+     */
+    private boolean showCsvPreview(java.io.File file) {
+    
+        try (BufferedReader reader =
+                     new BufferedReader(new FileReader(file))) {
+    
+            // Read CSV header
+            String headerLine = reader.readLine();
+    
+            if (headerLine == null) {
+    
+                JOptionPane.showMessageDialog(
+                        this,
+                        "The selected CSV file is empty.",
+                        "CSV Preview",
+                        JOptionPane.WARNING_MESSAGE
+                );
+    
+                return false;
+            }
+    
+            // Create columns from first line
+            String[] columns = headerLine.split(",", -1);
+    
+            DefaultTableModel model =
+                    new DefaultTableModel(columns, 0) {
+    
+                        @Override
+                        public boolean isCellEditable(
+                                int row,
+                                int column) {
+    
+                            return false;
+                        }
+                    };
+    
+            String line;
+            int previewRows = 0;
+    
+            // Show up to the first 100 rows
+            while ((line = reader.readLine()) != null
+                    && previewRows < 100) {
+    
+                String[] row = line.split(",", -1);
+    
+                model.addRow(row);
+    
+                previewRows++;
+            }
+    
+            // Create preview table
+            JTable table = new JTable(model);
+    
+            table.setAutoResizeMode(
+                    JTable.AUTO_RESIZE_OFF
+            );
+    
+            table.setRowHeight(24);
+    
+            table.getTableHeader().setReorderingAllowed(false);
+    
+            // Give every column a readable width
+            for (int i = 0;
+                 i < table.getColumnCount();
+                 i++) {
+    
+                table.getColumnModel()
+                        .getColumn(i)
+                        .setPreferredWidth(140);
+            }
+    
+            // Scrollable preview
+            JScrollPane scrollPane =
+                    new JScrollPane(table);
+    
+            scrollPane.setPreferredSize(
+                    new Dimension(850, 450)
+            );
+    
+            // Main preview panel
+            JPanel previewPanel =
+                    new JPanel(new BorderLayout(0, 10));
+    
+            JLabel fileNameLabel =
+                    new JLabel(
+                            "Selected file: "
+                            + file.getName()
+                    );
+    
+            JLabel rowLabel =
+                    new JLabel(
+                            "Showing first "
+                            + previewRows
+                            + " rows"
+                    );
+    
+            JPanel topPanel =
+                    new JPanel(
+                            new BorderLayout()
+                    );
+    
+            topPanel.add(
+                    fileNameLabel,
+                    BorderLayout.WEST
+            );
+    
+            topPanel.add(
+                    rowLabel,
+                    BorderLayout.EAST
+            );
+    
+            previewPanel.add(
+                    topPanel,
+                    BorderLayout.NORTH
+            );
+    
+            previewPanel.add(
+                    scrollPane,
+                    BorderLayout.CENTER
+            );
+    
+            // Confirmation popup
+            int choice =
+                    JOptionPane.showConfirmDialog(
+                            this,
+                            previewPanel,
+                            "Preview CSV Before Upload",
+                            JOptionPane.OK_CANCEL_OPTION,
+                            JOptionPane.PLAIN_MESSAGE
+                    );
+    
+            // Only continue upload if OK is clicked
+            return choice == JOptionPane.OK_OPTION;
+    
+        } catch (Exception ex) {
+    
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Could not preview CSV:\n"
+                            + ex.getMessage(),
+                    "CSV Preview Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+    
+            return false;
+        }
+    }
     private void logout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Sign out and return to the login screen?",
