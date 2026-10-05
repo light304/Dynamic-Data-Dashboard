@@ -23,11 +23,6 @@ import java.io.FileReader;
  * - sidebar on the left, carrying the application branding at its top
  * - shared filter bar above the page content
  * - page content in the centre
- *
- * The branding used to sit in a full-width strip across the top of the
- * window. Only the leftmost 210px of that strip was ever used, so the
- * remaining ~1100x85 was empty background on every page. The branding now
- * lives inside SidebarPanel and that strip is gone.
  */
 public class DashboardFrame extends JFrame {
 
@@ -35,235 +30,500 @@ public class DashboardFrame extends JFrame {
 
     private final CardLayout cards = new CardLayout();
     private final JPanel content = new JPanel(cards);
-    private final Map<String, FilterableDashboardPage> filterablePages = new LinkedHashMap<>();
+
+    private final Map<String, FilterableDashboardPage> filterablePages =
+            new LinkedHashMap<>();
 
     // One filter state is remembered for the whole dashboard.
     private DashboardFilter globalFilter = DashboardFilter.defaults();
+
     private String currentPage = "Overview";
+
     private Map<String, TableMeta> schema = Map.of();
 
     public DashboardFrame() {
+
         try {
+
             schema = SchemaIntrospector.introspect();
-            System.out.println("Schema loaded successfully.");
+
+            System.out.println(
+                    "Schema loaded successfully."
+            );
+
         } catch (Exception ex) {
+
             JOptionPane.showMessageDialog(
                     null,
                     "Cannot reach the backend service at http://localhost:3000\n\n"
-                    + "Start it first, in a separate terminal:\n\n"
-                    + "    cd src\\main\\java\\dashboard\\database\n"
-                    + "    npm start\n\n"
-                    + "Then run this application again.\n\n"
-                    + "Details: " + ex,
+                            + "Start it first, in a separate terminal:\n\n"
+                            + "    cd src\\main\\java\\dashboard\\database\n"
+                            + "    npm start\n\n"
+                            + "Then run this application again.\n\n"
+                            + "Details: " + ex,
                     "Backend Not Running",
                     JOptionPane.ERROR_MESSAGE
             );
+
             System.exit(1);
         }
 
-        setTitle("Dynamic Retail Dashboard");
-        setSize(1350, 850);
-        setMinimumSize(new Dimension(1050, 700));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setTitle(
+                "Dynamic Retail Dashboard"
+        );
+
+        setSize(
+                1350,
+                850
+        );
+
+        setMinimumSize(
+                new Dimension(
+                        1050,
+                        700
+                )
+        );
+
+        setDefaultCloseOperation(
+                JFrame.EXIT_ON_CLOSE
+        );
+
         setLocationRelativeTo(null);
+
         createLayout();
     }
 
     private void createLayout() {
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(BACKGROUND);
 
-        // The sidebar spans the full window height and carries the branding.
-        root.add(new SidebarPanel(this::showPage, this::uploadCsv, this::logout), BorderLayout.WEST);
+        JPanel root =
+                new JPanel(
+                        new BorderLayout()
+                );
 
-        // The filter is only above the changing page content, not above the sidebar.
-        JPanel centre = new JPanel(new BorderLayout());
-        centre.setBackground(BACKGROUND);
-        centre.add(new GlobalFilterPanel(this::onGlobalFilterChanged), BorderLayout.NORTH);
-        centre.add(createContentArea(), BorderLayout.CENTER);
+        root.setBackground(
+                BACKGROUND
+        );
 
-        root.add(centre, BorderLayout.CENTER);
+        // Sidebar
+        root.add(
+                new SidebarPanel(
+                        this::showPage,
+                        this::uploadCsv,
+                        this::logout
+                ),
+                BorderLayout.WEST
+        );
+
+        // Centre area
+        JPanel centre =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        centre.setBackground(
+                BACKGROUND
+        );
+
+        centre.add(
+                new GlobalFilterPanel(
+                        this::onGlobalFilterChanged
+                ),
+                BorderLayout.NORTH
+        );
+
+        centre.add(
+                createContentArea(),
+                BorderLayout.CENTER
+        );
+
+        root.add(
+                centre,
+                BorderLayout.CENTER
+        );
+
         setContentPane(root);
     }
 
     private JPanel createContentArea() {
-        content.setBackground(BACKGROUND);
 
-        OverviewPanel overview = new OverviewPanel(schema);
-        SalesPanel sales = new SalesPanel();
-        InventoryPanel inventory = new InventoryPanel();
-        ProductsPanel products = new ProductsPanel();
-        MarketingPanel marketing = new MarketingPanel();
-        CustomersPanel customers = new CustomersPanel();
+        content.setBackground(
+                BACKGROUND
+        );
 
-        filterablePages.put("Overview", overview);
-        filterablePages.put("Sales", sales);
-        filterablePages.put("Inventory", inventory);
-        filterablePages.put("Products", products);
-        filterablePages.put("Marketing", marketing);
-        filterablePages.put("Customers", customers);
+        OverviewPanel overview =
+                new OverviewPanel(schema);
 
-        content.add(overview, "Overview");
-        content.add(sales, "Sales");
-        content.add(inventory, "Inventory");
-        content.add(products, "Products");
-        content.add(marketing, "Marketing");
-        content.add(customers, "Customers");
+        SalesPanel sales =
+                new SalesPanel();
 
-        if (UserSession.getInstance().isManager()) {
-            AlertsPanel alerts = new AlertsPanel();
-            content.add(alerts, "Alerts");
+        InventoryPanel inventory =
+                new InventoryPanel();
+
+        ProductsPanel products =
+                new ProductsPanel();
+
+        MarketingPanel marketing =
+                new MarketingPanel();
+
+        CustomersPanel customers =
+                new CustomersPanel();
+
+        filterablePages.put(
+                "Overview",
+                overview
+        );
+
+        filterablePages.put(
+                "Sales",
+                sales
+        );
+
+        filterablePages.put(
+                "Inventory",
+                inventory
+        );
+
+        filterablePages.put(
+                "Products",
+                products
+        );
+
+        filterablePages.put(
+                "Marketing",
+                marketing
+        );
+
+        filterablePages.put(
+                "Customers",
+                customers
+        );
+
+        content.add(
+                overview,
+                "Overview"
+        );
+
+        content.add(
+                sales,
+                "Sales"
+        );
+
+        content.add(
+                inventory,
+                "Inventory"
+        );
+
+        content.add(
+                products,
+                "Products"
+        );
+
+        content.add(
+                marketing,
+                "Marketing"
+        );
+
+        content.add(
+                customers,
+                "Customers"
+        );
+
+        if (
+                UserSession
+                        .getInstance()
+                        .isManager()
+        ) {
+
+            AlertsPanel alerts =
+                    new AlertsPanel();
+
+            content.add(
+                    alerts,
+                    "Alerts"
+            );
         }
 
-        // PERFORMANCE: load only the visible page at startup. Previously all six
-        // pages refreshed together, which caused several API calls and made it slow.
-        SwingUtilities.invokeLater(() -> applyFilterToPage("Overview"));
+        // Only load the visible page on startup.
+        SwingUtilities.invokeLater(
+                () ->
+                        applyFilterToPage(
+                                "Overview"
+                        )
+        );
+
         return content;
     }
 
     /**
-     * Saves the new global filter and refreshes ONLY the page the user is viewing.
-     * Other pages receive the same filter when the user opens them.
+     * Saves the new global filter and refreshes only
+     * the page currently being viewed.
      */
-    private void onGlobalFilterChanged(DashboardFilter filter) {
-        globalFilter = filter == null ? DashboardFilter.defaults() : filter;
-        System.out.println("GLOBAL FILTER -> " + globalFilter);
-        applyFilterToPage(currentPage);
-    }
+    private void onGlobalFilterChanged(
+            DashboardFilter filter
+    ) {
 
-    private void showPage(String page) {
-        currentPage = page;
-        cards.show(content, page);
+        globalFilter =
+                filter == null
+                        ? DashboardFilter.defaults()
+                        : filter;
 
-        // Lazy refresh keeps navigation responsive and avoids loading every chart
-        // whenever Apply Filters is clicked.
-        applyFilterToPage(page);
-    }
-
-    private void applyFilterToPage(String pageName) {
-        FilterableDashboardPage page = filterablePages.get(pageName);
-        if (page == null) return;
-
-        try {
-            page.applyFilter(globalFilter);
-        } catch (Exception ex) {
-            System.err.println("Filter refresh failed for " + pageName + ": " + ex.getMessage());
-        }
-    }
-
-    private void uploadCsv() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select a CSV file");
-        chooser.setFileFilter(
-                new javax.swing.filechooser.FileNameExtensionFilter(
-                        "CSV files", "csv"
-                )
+        System.out.println(
+                "GLOBAL FILTER -> "
+                        + globalFilter
         );
-    
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+
+        applyFilterToPage(
+                currentPage
+        );
+    }
+
+    private void showPage(
+            String page
+    ) {
+
+        currentPage = page;
+
+        cards.show(
+                content,
+                page
+        );
+
+        // Refresh only the page opened by the user.
+        applyFilterToPage(
+                page
+        );
+    }
+
+    private void applyFilterToPage(
+            String pageName
+    ) {
+
+        FilterableDashboardPage page =
+                filterablePages.get(
+                        pageName
+                );
+
+        if (page == null) {
             return;
         }
-    
-        java.io.File file = chooser.getSelectedFile();
-    
-        // Preview the CSV before uploading
+
+        try {
+
+            page.applyFilter(
+                    globalFilter
+            );
+
+        } catch (Exception ex) {
+
+            System.err.println(
+                    "Filter refresh failed for "
+                            + pageName
+                            + ": "
+                            + ex.getMessage()
+            );
+        }
+    }
+
+    // ============================================================
+    // CSV UPLOAD
+    // ============================================================
+
+    private void uploadCsv() {
+
+        JFileChooser chooser =
+                new JFileChooser();
+
+        chooser.setDialogTitle(
+                "Select a CSV file"
+        );
+
+        chooser.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter(
+                        "CSV files",
+                        "csv"
+                )
+        );
+
+        if (
+                chooser.showOpenDialog(this)
+                        != JFileChooser.APPROVE_OPTION
+        ) {
+
+            return;
+        }
+
+        java.io.File file =
+                chooser.getSelectedFile();
+
+        // --------------------------------------------------------
+        // PREVIEW CSV BEFORE UPLOAD
+        // --------------------------------------------------------
+
         if (!showCsvPreview(file)) {
             return;
         }
-    
-        // Existing loading popup
-        JDialog loading = new JDialog(this, "Uploading", true);
-    
-        JPanel body = new JPanel(new BorderLayout(0, 10));
+
+        // --------------------------------------------------------
+        // UPLOAD PROGRESS WINDOW
+        // --------------------------------------------------------
+
+        JDialog loading =
+                new JDialog(
+                        this,
+                        "Uploading",
+                        true
+                );
+
+        JPanel body =
+                new JPanel(
+                        new BorderLayout(
+                                0,
+                                10
+                        )
+                );
+
         body.setBorder(
-                BorderFactory.createEmptyBorder(20, 25, 20, 25)
+                BorderFactory.createEmptyBorder(
+                        20,
+                        25,
+                        20,
+                        25
+                )
         );
-    
+
         body.add(
-                new JLabel("Loading " + file.getName() + "..."),
+                new JLabel(
+                        "Loading "
+                                + file.getName()
+                                + "..."
+                ),
                 BorderLayout.NORTH
         );
-    
-        JProgressBar bar = new JProgressBar();
-        bar.setIndeterminate(true);
-    
-        body.add(bar, BorderLayout.CENTER);
-    
-        loading.setContentPane(body);
+
+        JProgressBar bar =
+                new JProgressBar();
+
+        bar.setIndeterminate(
+                true
+        );
+
+        body.add(
+                bar,
+                BorderLayout.CENTER
+        );
+
+        loading.setContentPane(
+                body
+        );
+
         loading.pack();
-        loading.setLocationRelativeTo(this);
+
+        loading.setLocationRelativeTo(
+                this
+        );
+
         loading.setDefaultCloseOperation(
                 JDialog.DO_NOTHING_ON_CLOSE
         );
-    
-        new SwingWorker<AnalyticsApi.UploadResult, Void>() {
-    
+
+        // --------------------------------------------------------
+        // PERFORM UPLOAD IN BACKGROUND
+        // --------------------------------------------------------
+
+        new SwingWorker<
+                AnalyticsApi.UploadResult,
+                Void>() {
+
             @Override
-            protected AnalyticsApi.UploadResult doInBackground()
+            protected AnalyticsApi.UploadResult
+            doInBackground()
                     throws Exception {
-    
+
                 return AnalyticsApi.upload(
                         file.getAbsolutePath()
                 );
             }
-    
+
             @Override
             protected void done() {
-    
+
                 loading.dispose();
-                setCursor(Cursor.getDefaultCursor());
-    
+
+                setCursor(
+                        Cursor.getDefaultCursor()
+                );
+
                 try {
-    
-                    AnalyticsApi.UploadResult result = get();
-    
+
+                    AnalyticsApi.UploadResult result =
+                            get();
+
                     if (result.success()) {
-    
+
                         String message =
                                 "Loaded "
-                                + result.loaded()
-                                + " of "
-                                + result.totalRows()
-                                + " rows into "
-                                + result.table()
-                                + ".\n"
-                                + result.rejected()
-                                + " row(s) rejected.";
-    
-                        if (!result.rejectedDetail().isEmpty()) {
-    
-                            message += "\n\n"
-                                    + String.join(
+                                        + result.loaded()
+                                        + " of "
+                                        + result.totalRows()
+                                        + " rows into "
+                                        + result.table()
+                                        + ".\n"
+                                        + result.rejected()
+                                        + " row(s) rejected.";
+
+                        if (
+                                !result
+                                        .rejectedDetail()
+                                        .isEmpty()
+                        ) {
+
+                            message +=
+                                    "\n\n"
+                                            + String.join(
                                             "\n",
                                             result.rejectedDetail()
                                     );
-    
-                            if (result.rejected()
-                                    > result.rejectedDetail().size()) {
-    
-                                message += "\n... and "
-                                        + (result.rejected()
-                                        - result.rejectedDetail().size())
-                                        + " more";
+
+                            if (
+                                    result.rejected()
+                                            > result
+                                            .rejectedDetail()
+                                            .size()
+                            ) {
+
+                                message +=
+                                        "\n... and "
+                                                + (
+                                                result.rejected()
+                                                        -
+                                                        result
+                                                                .rejectedDetail()
+                                                                .size()
+                                        )
+                                                + " more";
                             }
                         }
-    
+
                         JOptionPane.showMessageDialog(
                                 DashboardFrame.this,
                                 message,
                                 "Upload Complete",
                                 JOptionPane.INFORMATION_MESSAGE
                         );
-    
-                        // Refresh all dashboard pages
-                        filterablePages
-                                .keySet()
-                                .forEach(
-                                        DashboardFrame.this::applyFilterToPage
+
+                        // ========================================
+                        // FIX:
+                        // Refresh ONLY the currently visible page.
+                        // Do not refresh every dashboard page.
+                        // ========================================
+
+                        DashboardFrame.this
+                                .applyFilterToPage(
+                                        currentPage
                                 );
-    
+
                     } else {
-    
+
                         JOptionPane.showMessageDialog(
                                 DashboardFrame.this,
                                 result.error(),
@@ -271,151 +531,208 @@ public class DashboardFrame extends JFrame {
                                 JOptionPane.ERROR_MESSAGE
                         );
                     }
-    
+
                 } catch (Exception ex) {
-    
+
                     JOptionPane.showMessageDialog(
                             DashboardFrame.this,
-                            "Upload failed: " + ex,
+                            "Upload failed: "
+                                    + ex,
                             "Upload Failed",
                             JOptionPane.ERROR_MESSAGE
                     );
                 }
             }
-    
+
         }.execute();
-    
-        loading.setVisible(true);
+
+        loading.setVisible(
+                true
+        );
     }
-    
-    
+
+    // ============================================================
+    // CSV PREVIEW
+    // ============================================================
+
     /**
-     * Displays the selected CSV in a table before it is uploaded.
+     * Displays the selected CSV in a table before
+     * it is uploaded.
      *
      * @return true if the user confirms the upload,
-     *         false if they cancel.
+     * false if they cancel.
      */
-    private boolean showCsvPreview(java.io.File file) {
-    
-        try (BufferedReader reader =
-                     new BufferedReader(new FileReader(file))) {
-    
+    private boolean showCsvPreview(
+            java.io.File file
+    ) {
+
+        try (
+                BufferedReader reader =
+                        new BufferedReader(
+                                new FileReader(file)
+                        )
+        ) {
+
             // Read CSV header
-            String headerLine = reader.readLine();
-    
+            String headerLine =
+                    reader.readLine();
+
             if (headerLine == null) {
-    
+
                 JOptionPane.showMessageDialog(
                         this,
                         "The selected CSV file is empty.",
                         "CSV Preview",
                         JOptionPane.WARNING_MESSAGE
                 );
-    
+
                 return false;
             }
-    
+
             // Create columns from first line
-            String[] columns = headerLine.split(",", -1);
-    
+            String[] columns =
+                    headerLine.split(
+                            ",",
+                            -1
+                    );
+
             DefaultTableModel model =
-                    new DefaultTableModel(columns, 0) {
-    
+                    new DefaultTableModel(
+                            columns,
+                            0
+                    ) {
+
                         @Override
                         public boolean isCellEditable(
                                 int row,
-                                int column) {
-    
+                                int column
+                        ) {
+
                             return false;
                         }
                     };
-    
+
             String line;
+
             int previewRows = 0;
-    
+
             // Show up to the first 100 rows
-            while ((line = reader.readLine()) != null
-                    && previewRows < 100) {
-    
-                String[] row = line.split(",", -1);
-    
-                model.addRow(row);
-    
+            while (
+                    (line = reader.readLine())
+                            != null
+                            &&
+                            previewRows < 100
+            ) {
+
+                String[] row =
+                        line.split(
+                                ",",
+                                -1
+                        );
+
+                model.addRow(
+                        row
+                );
+
                 previewRows++;
             }
-    
+
             // Create preview table
-            JTable table = new JTable(model);
-    
+            JTable table =
+                    new JTable(
+                            model
+                    );
+
             table.setAutoResizeMode(
                     JTable.AUTO_RESIZE_OFF
             );
-    
-            table.setRowHeight(24);
-    
-            table.getTableHeader().setReorderingAllowed(false);
-    
-            // Give every column a readable width
-            for (int i = 0;
-                 i < table.getColumnCount();
-                 i++) {
-    
+
+            table.setRowHeight(
+                    24
+            );
+
+            table.getTableHeader()
+                    .setReorderingAllowed(
+                            false
+                    );
+
+            // Give each column a readable width
+            for (
+                    int i = 0;
+                    i < table.getColumnCount();
+                    i++
+            ) {
+
                 table.getColumnModel()
                         .getColumn(i)
-                        .setPreferredWidth(140);
+                        .setPreferredWidth(
+                                140
+                        );
             }
-    
-            // Scrollable preview
+
             JScrollPane scrollPane =
-                    new JScrollPane(table);
-    
+                    new JScrollPane(
+                            table
+                    );
+
             scrollPane.setPreferredSize(
-                    new Dimension(850, 450)
+                    new Dimension(
+                            850,
+                            450
+                    )
             );
-    
+
             // Main preview panel
             JPanel previewPanel =
-                    new JPanel(new BorderLayout(0, 10));
-    
+                    new JPanel(
+                            new BorderLayout(
+                                    0,
+                                    10
+                            )
+                    );
+
             JLabel fileNameLabel =
                     new JLabel(
                             "Selected file: "
-                            + file.getName()
+                                    + file.getName()
                     );
-    
+
             JLabel rowLabel =
                     new JLabel(
                             "Showing first "
-                            + previewRows
-                            + " rows"
+                                    + previewRows
+                                    + " rows"
                     );
-    
+
             JPanel topPanel =
                     new JPanel(
                             new BorderLayout()
                     );
-    
+
             topPanel.add(
                     fileNameLabel,
                     BorderLayout.WEST
             );
-    
+
             topPanel.add(
                     rowLabel,
                     BorderLayout.EAST
             );
-    
+
             previewPanel.add(
                     topPanel,
                     BorderLayout.NORTH
             );
-    
+
             previewPanel.add(
                     scrollPane,
                     BorderLayout.CENTER
             );
-    
-            // Confirmation popup
+
+            // ----------------------------------------------------
+            // CONFIRM UPLOAD
+            // ----------------------------------------------------
+
             int choice =
                     JOptionPane.showConfirmDialog(
                             this,
@@ -424,12 +741,12 @@ public class DashboardFrame extends JFrame {
                             JOptionPane.OK_CANCEL_OPTION,
                             JOptionPane.PLAIN_MESSAGE
                     );
-    
-            // Only continue upload if OK is clicked
-            return choice == JOptionPane.OK_OPTION;
-    
+
+            return choice
+                    == JOptionPane.OK_OPTION;
+
         } catch (Exception ex) {
-    
+
             JOptionPane.showMessageDialog(
                     this,
                     "Could not preview CSV:\n"
@@ -437,24 +754,49 @@ public class DashboardFrame extends JFrame {
                     "CSV Preview Error",
                     JOptionPane.ERROR_MESSAGE
             );
-    
+
             return false;
         }
     }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+
     private void logout() {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Sign out and return to the login screen?",
-                "Log Out",
-                JOptionPane.YES_NO_OPTION);
 
-        if (confirm != JOptionPane.YES_OPTION) return;
+        int confirm =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        "Sign out and return to the login screen?",
+                        "Log Out",
+                        JOptionPane.YES_NO_OPTION
+                );
 
-        UserSession.getInstance().logout();
+        if (
+                confirm
+                        != JOptionPane.YES_OPTION
+        ) {
+
+            return;
+        }
+
+        UserSession
+                .getInstance()
+                .logout();
+
         dispose();
 
-        AuthService authService = new AuthService();
-        SwingUtilities.invokeLater(() ->
-                new LoginFrame(authService).setVisible(true));
-    }
+        AuthService authService =
+                new AuthService();
 
+        SwingUtilities.invokeLater(
+                () ->
+                        new LoginFrame(
+                                authService
+                        ).setVisible(
+                                true
+                        )
+        );
+    }
 }
