@@ -1,25 +1,34 @@
 #!/bin/bash
 
+# ============================================================
+# Dynamic Retail Dashboard Launcher
+# ============================================================
+
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR" || exit 1
+
+JAVA="/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java"
 
 echo "======================================"
 echo " Dynamic Retail Dashboard"
 echo "======================================"
 echo ""
 
-# --------------------------------------------------
-# BACKEND
-# --------------------------------------------------
-
-echo "Stopping old backend..."
+# ============================================================
+# 1. STOP OLD BACKEND
+# ============================================================
 
 OLD_PID=$(lsof -tiTCP:3000 -sTCP:LISTEN)
 
 if [ -n "$OLD_PID" ]; then
+    echo "Stopping old backend..."
     kill "$OLD_PID" 2>/dev/null
-    sleep 1
+    sleep 0.3
 fi
+
+# ============================================================
+# 2. START BACKEND
+# ============================================================
 
 echo "Starting backend..."
 
@@ -27,58 +36,103 @@ node "$PROJECT_DIR/src/main/java/dashboard/database/server.js" &
 
 BACKEND_PID=$!
 
-sleep 2
+# Give Node a moment to start
+sleep 0.5
 
-if ! lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "Backend failed to start."
-    read -p "Press Enter to close..."
-    exit 1
-fi
+# Wait a little longer only if necessary
+ATTEMPTS=0
 
-echo "Backend started."
+while ! lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; do
 
-# --------------------------------------------------
-# COMPILE CURRENT JAVA CODE
-# --------------------------------------------------
+    sleep 0.25
+
+    ATTEMPTS=$((ATTEMPTS + 1))
+
+    if [ "$ATTEMPTS" -ge 12 ]; then
+        echo ""
+        echo "ERROR: Backend failed to start."
+
+        read -p "Press Enter to close..."
+        exit 1
+    fi
+
+done
+
+echo "Backend ready."
+
+# ============================================================
+# 3. PREPARE / COMPILE JAVA
+# ============================================================
 
 echo ""
-echo "Compiling dashboard..."
 
-mvn compile dependency:build-classpath \
-    -Dmdep.outputFile=target/classpath.txt
+# First launch:
+# compile project and create dependency classpath
+if [ ! -f "$PROJECT_DIR/target/classpath.txt" ]; then
 
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "Compilation failed."
-    kill "$BACKEND_PID" 2>/dev/null
-    read -p "Press Enter to close..."
-    exit 1
+    echo "Preparing dashboard for first launch..."
+
+    mvn -q compile dependency:build-classpath \
+        -Dmdep.outputFile=target/classpath.txt
+
+    if [ $? -ne 0 ]; then
+
+        echo ""
+        echo "ERROR: Java compilation failed."
+
+        kill "$BACKEND_PID" 2>/dev/null
+
+        read -p "Press Enter to close..."
+        exit 1
+    fi
+
+else
+
+    # Future launches:
+    # Maven only recompiles changed Java files
+    echo "Checking for code changes..."
+
+    mvn -q compile
+
+    if [ $? -ne 0 ]; then
+
+        echo ""
+        echo "ERROR: Java compilation failed."
+
+        kill "$BACKEND_PID" 2>/dev/null
+
+        read -p "Press Enter to close..."
+        exit 1
+    fi
+
 fi
 
-# --------------------------------------------------
-# BUILD CLASSPATH
-# --------------------------------------------------
+# ============================================================
+# 4. CREATE CLASSPATH
+# ============================================================
 
-DEPENDENCIES=$(cat target/classpath.txt)
+DEPENDENCIES=$(cat "$PROJECT_DIR/target/classpath.txt")
 
 CLASSPATH="$PROJECT_DIR/target/classes:$DEPENDENCIES"
 
-# --------------------------------------------------
-# RUN JAVA DIRECTLY — SAME STYLE AS VS CODE
-# --------------------------------------------------
+# ============================================================
+# 5. START DASHBOARD
+# ============================================================
 
-echo ""
 echo "Starting dashboard..."
+echo ""
 
-"/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java" \
+"$JAVA" \
     -cp "$CLASSPATH" \
     dashboard.Main
 
-# --------------------------------------------------
-# CLEAN UP
-# --------------------------------------------------
+# ============================================================
+# 6. CLOSE BACKEND WHEN DASHBOARD CLOSES
+# ============================================================
 
 echo ""
 echo "Closing backend..."
 
 kill "$BACKEND_PID" 2>/dev/null
+
+echo "Dashboard closed."
