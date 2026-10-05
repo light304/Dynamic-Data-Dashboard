@@ -1,28 +1,84 @@
 #!/bin/bash
 
-# Move to the folder where this launcher is located
-cd "$(dirname "$0")"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$PROJECT_DIR" || exit 1
 
-echo "Starting Dynamic Retail Dashboard..."
+echo "======================================"
+echo " Dynamic Retail Dashboard"
+echo "======================================"
+echo ""
 
-# Start backend only if port 3000 isn't already being used
-if ! lsof -i :3000 >/dev/null 2>&1; then
-    echo "Starting backend..."
-    node src/main/java/dashboard/database/server.js &
-    BACKEND_PID=$!
+# --------------------------------------------------
+# BACKEND
+# --------------------------------------------------
 
-    # Give backend time to start
-    sleep 2
-else
-    echo "Backend is already running."
+echo "Stopping old backend..."
+
+OLD_PID=$(lsof -tiTCP:3000 -sTCP:LISTEN)
+
+if [ -n "$OLD_PID" ]; then
+    kill "$OLD_PID" 2>/dev/null
+    sleep 1
 fi
 
+echo "Starting backend..."
+
+node "$PROJECT_DIR/src/main/java/dashboard/database/server.js" &
+
+BACKEND_PID=$!
+
+sleep 2
+
+if ! lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "Backend failed to start."
+    read -p "Press Enter to close..."
+    exit 1
+fi
+
+echo "Backend started."
+
+# --------------------------------------------------
+# COMPILE CURRENT JAVA CODE
+# --------------------------------------------------
+
+echo ""
+echo "Compiling dashboard..."
+
+mvn compile dependency:build-classpath \
+    -Dmdep.outputFile=target/classpath.txt
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Compilation failed."
+    kill "$BACKEND_PID" 2>/dev/null
+    read -p "Press Enter to close..."
+    exit 1
+fi
+
+# --------------------------------------------------
+# BUILD CLASSPATH
+# --------------------------------------------------
+
+DEPENDENCIES=$(cat target/classpath.txt)
+
+CLASSPATH="$PROJECT_DIR/target/classes:$DEPENDENCIES"
+
+# --------------------------------------------------
+# RUN JAVA DIRECTLY — SAME STYLE AS VS CODE
+# --------------------------------------------------
+
+echo ""
 echo "Starting dashboard..."
 
-# Run the existing Java application through Maven
-mvn compile exec:java -Dexec.mainClass="dashboard.Main"
+"/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java" \
+    -cp "$CLASSPATH" \
+    dashboard.Main
 
-# Stop backend when dashboard closes
-if [ ! -z "$BACKEND_PID" ]; then
-    kill $BACKEND_PID 2>/dev/null
-fi
+# --------------------------------------------------
+# CLEAN UP
+# --------------------------------------------------
+
+echo ""
+echo "Closing backend..."
+
+kill "$BACKEND_PID" 2>/dev/null
