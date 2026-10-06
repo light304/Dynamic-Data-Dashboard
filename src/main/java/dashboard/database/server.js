@@ -3829,7 +3829,6 @@ function resolveMissingAlerts(
   }
 }
 
-
 function detectLowStockAlerts() {
 
   const thresholdPercent =
@@ -3850,32 +3849,19 @@ function detectLowStockAlerts() {
       db.prepare(`
           WITH sales_average AS (
 
-SELECT
+              SELECT
                   product_id,
                   SUM(quantity) / 3.0 AS average_sales
 
->>>>>>> Raghav's-Branch3
-
-FROM sales
+              FROM sales
 
               WHERE order_date >= date(
                   (SELECT MAX(order_date) FROM sales),
                   '-90 day'
               )
 
-
               GROUP BY product_id
-=======
-WHERE order_date >= date(
-    (SELECT MAX(order_date) FROM sales),
-    '-90 day'
-)
-
-GROUP BY product_id
-
->>>>>>> Stashed changes
           ),
-          
 
           latest_inventory_date AS (
 
@@ -3969,29 +3955,31 @@ GROUP BY product_id
       }
   }
 
-
   resolveMissingAlerts(
-      'LOW_STOCK',
-      activeKeys
-  );
+    'LOW_STOCK',
+    activeKeys
+);
 }
+
+// ========================================================
+// PERFORMANCE ALERTS
+// ========================================================
 
 function detectPerformanceAlerts() {
 
-  const revenueThreshold =
-      getThreshold(
-          'REVENUE_DROP_PERCENT'
-      );
+    const revenueThreshold =
+        getThreshold(
+            'REVENUE_DROP_PERCENT'
+        );
 
-  const profitThreshold =
-      getThreshold(
-          'PROFIT_DROP_PERCENT'
-      );
+    const profitThreshold =
+        getThreshold(
+            'PROFIT_DROP_PERCENT'
+        );
 
-
-  /*
-   * Find the latest two months available in sales.
-   */
+    /*
+     * Find the latest two months available in sales.
+     */
 
   const months =
       db.prepare(`
@@ -5131,4 +5119,5 @@ module.exports.testHelpers = {
   dashboardRange,
   previousRange,
   regionClause
-};
+}
+
