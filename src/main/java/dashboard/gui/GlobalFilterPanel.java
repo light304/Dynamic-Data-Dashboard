@@ -1,11 +1,28 @@
 package dashboard.gui;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
 
 /**
  * Shared filter bar used across the dashboard.
@@ -53,6 +70,9 @@ public class GlobalFilterPanel extends JPanel {
 
     private final JLabel monthLabel = label("Month");
 
+    // Wrapper around the Month label + combo, hidden unless scope is Weekly.
+    private final JPanel monthGroup = new JPanel();
+
     // Gives the user temporary feedback after applying or resetting filters.
     private final JLabel statusLabel = new JLabel(" ");
 
@@ -89,10 +109,12 @@ public class GlobalFilterPanel extends JPanel {
                                 0,
                                 BORDER
                         ),
+                        // Left is 8 because FlowLayout adds its own 14px leading
+                        // gap, so the dropdowns start 22px in (same as the page).
                         new EmptyBorder(
-                                12,
-                                22,
-                                12,
+                                20,
+                                8,
+                                20,
                                 22
                         )
                 )
@@ -128,8 +150,6 @@ public class GlobalFilterPanel extends JPanel {
          * Month is separate because it is only displayed when
          * the user selects Weekly scope.
          */
-        JPanel monthGroup = new JPanel();
-
         monthGroup.setOpaque(false);
 
         monthGroup.setLayout(
@@ -183,15 +203,23 @@ public class GlobalFilterPanel extends JPanel {
                         ACTIVE_HOVER
                 );
 
-        apply.setPreferredSize(
-                new Dimension(
-                        140,
-                        38
-                )
-        );
-
         apply.setFont(
                 Theme.SMALL_BOLD
+        );
+
+        /*
+         * Size the button to its text plus a little padding rather than a
+         * fixed 140px, so it stays slim and still fits if the font changes.
+         */
+        apply.setBorder(
+                new EmptyBorder(0, 12, 0, 12)
+        );
+
+        apply.setPreferredSize(
+                new Dimension(
+                        apply.getPreferredSize().width,
+                        36
+                )
         );
 
 
@@ -205,7 +233,7 @@ public class GlobalFilterPanel extends JPanel {
         reset.setPreferredSize(
                 new Dimension(
                         72,
-                        38
+                        36
                 )
         );
 
@@ -244,31 +272,43 @@ public class GlobalFilterPanel extends JPanel {
         statusLabel.setPreferredSize(
                 new Dimension(
                         125,
-                        38
+                        36
                 )
         );
 
 
-        JPanel actions =
+        JPanel buttonRow =
                 new JPanel(
                         new FlowLayout(
                                 FlowLayout.LEFT,
                                 8,
-                                18
+                                0
                         )
                 );
 
-        actions.setOpaque(false);
+        buttonRow.setOpaque(false);
 
-        actions.add(apply);
-        actions.add(reset);
-        actions.add(statusLabel);
+        buttonRow.add(apply);
+        buttonRow.add(reset);
+        buttonRow.add(statusLabel);
 
-        filters.add(actions);
+        // Blank title = same height as the other groups' labels, so the
+        // buttons land exactly on the dropdown line.
+        filters.add(
+                group(
+                        " ",
+                        buttonRow
+                )
+        );
 
+        /*
+         * WEST rather than CENTER: BorderLayout gives WEST its full preferred
+         * width even when the window is narrower, so the row never wraps.
+         * Anything that does not fit is simply cut off by the window edge.
+         */
         add(
                 filters,
-                BorderLayout.CENTER
+                BorderLayout.WEST
         );
 
 
@@ -336,7 +376,7 @@ public class GlobalFilterPanel extends JPanel {
      */
     private JPanel group(
             String title,
-            JComboBox<?> combo
+            JComponent control
     ) {
 
         JPanel group = new JPanel();
@@ -357,7 +397,7 @@ public class GlobalFilterPanel extends JPanel {
                 Component.LEFT_ALIGNMENT
         );
 
-        combo.setAlignmentX(
+        control.setAlignmentX(
                 Component.LEFT_ALIGNMENT
         );
 
@@ -367,7 +407,7 @@ public class GlobalFilterPanel extends JPanel {
                 Box.createVerticalStrut(4)
         );
 
-        group.add(combo);
+        group.add(control);
 
         return group;
     }
@@ -453,6 +493,7 @@ public class GlobalFilterPanel extends JPanel {
          */
         monthLabel.setVisible(weekly);
         monthFilter.setVisible(weekly);
+        monthGroup.setVisible(weekly);
 
         switch (scope) {
 
@@ -568,7 +609,7 @@ public class GlobalFilterPanel extends JPanel {
          */
         statusTimer.stop();
 
-        yearFilter.setSelectedItem(2025);
+        yearFilter.setSelectedItem(2023);
         scopeFilter.setSelectedItem("Yearly");
         monthFilter.setSelectedItem("January");
         regionFilter.setSelectedItem("All Regions");
