@@ -206,11 +206,13 @@ async function installBackendDependencies() {
     log('This can take a couple of minutes.');
     log();
 
-    const result = spawnSync('npm', ['install'], {
-        cwd: BACKEND_DIR,
-        stdio: 'inherit',
-        shell: IS_WIN,        // lets Windows resolve npm.cmd
-    });
+    const result = spawnSync(
+        IS_WIN ? 'cmd.exe' : 'npm',
+        IS_WIN ? ['/c', 'npm', 'install'] : ['install'],
+        {
+            cwd: BACKEND_DIR,
+            stdio: 'inherit',
+        });
 
     if (result.error || result.status !== 0) {
         await fail(
@@ -281,7 +283,17 @@ function runMaven(args) {
     const env = { ...process.env };
     if (javaHome) env.JAVA_HOME = javaHome;
 
-    return spawnSync(mavenCommand(), args, {
+    const command = mavenCommand();
+
+    /*
+     * Node will not spawn a .cmd or .bat file directly, so on Windows the
+     * wrapper runs through cmd.exe. Passing the arguments as a list rather
+     * than setting shell:true keeps them escaped and avoids DEP0190.
+     */
+    const file = IS_WIN ? 'cmd.exe' : command;
+    const fullArgs = IS_WIN ? ['/c', command, ...args] : args;
+
+    return spawnSync(file, fullArgs, {
         cwd: PROJECT_DIR,
         stdio: 'inherit',
         env,
@@ -313,11 +325,13 @@ async function compile() {
 
     const result = runMaven(args);
 
-    if (result.status !== 0) {
+    if (result.error || result.status !== 0) {
         await fail(
             'Java compilation failed.\n' +
-            'If nothing above explains why, check that Maven (mvn) is ' +
-            'installed and on your PATH.');
+            'If nothing above explains why, check that Java 21 is installed ' +
+            'and that the project folder is complete - mvnw, mvnw.cmd and ' +
+            '.mvn must all be present.' +
+            (result.error ? '\n\n' + result.error.message : ''));
     }
 }
 
