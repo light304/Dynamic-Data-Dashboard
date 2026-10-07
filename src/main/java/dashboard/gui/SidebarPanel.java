@@ -9,7 +9,6 @@ import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
-import javax.swing.border.Border;
 
 public class SidebarPanel extends JPanel {
     private static final Color SIDEBAR = Theme.SIDEBAR;
@@ -155,7 +154,7 @@ public class SidebarPanel extends JPanel {
         line2.setFont(Theme.BRAND);
         line2.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        String role = UserSession.getInstance().getRoleName();
+        
 
         // JLabel sub = new JLabel(
         //         role == null ? "Dashboard" : role + " Access");
