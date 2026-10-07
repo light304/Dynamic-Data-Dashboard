@@ -29,6 +29,8 @@ const MAIN_CLASS = 'dashboard.Main';
 const BACKEND_SCRIPT = path.join(
     PROJECT_DIR, 'src', 'main', 'java', 'dashboard', 'database', 'server.js');
 
+const BACKEND_DIR = path.dirname(BACKEND_SCRIPT);
+
 // The classpath file is per-OS because Maven writes OS-specific separators
 // (":" vs ";"), so a project folder shared between machines still works.
 const CLASSPATH_NAME = `classpath-${process.platform}.txt`;
@@ -186,6 +188,42 @@ function canConnect(port) {
     });
 }
 
+/*
+ * The repository tracks a handful of stray files under node_modules, so
+ * the folder itself exists in a fresh clone even though nothing is
+ * actually installed. Checking for the packages is the only reliable test.
+ */
+function backendDependenciesMissing() {
+    return ['express', 'better-sqlite3', 'csv-parse'].some(
+        (pkg) => !fs.existsSync(
+            path.join(BACKEND_DIR, 'node_modules', pkg, 'package.json')));
+}
+
+async function installBackendDependencies() {
+    if (!backendDependenciesMissing()) return;
+
+    log('Installing backend dependencies (first run only)...');
+    log('This can take a couple of minutes.');
+    log();
+
+    const result = spawnSync('npm', ['install'], {
+        cwd: BACKEND_DIR,
+        stdio: 'inherit',
+        shell: IS_WIN,        // lets Windows resolve npm.cmd
+    });
+
+    if (result.error || result.status !== 0) {
+        await fail(
+            'Could not install the backend dependencies.\n\n' +
+            'Run this manually, then try again:\n\n' +
+            '    cd ' + BACKEND_DIR + '\n' +
+            '    npm install');
+    }
+
+    log('Dependencies installed.');
+    log();
+}
+
 // ------------------------------------------------------------------
 // Backend
 // ------------------------------------------------------------------
@@ -316,6 +354,7 @@ async function main() {
     await checkJava(java);
 
     await stopOldBackend();
+    await installBackendDependencies();
     await startBackend();
     await compile();
     startDashboard(java);

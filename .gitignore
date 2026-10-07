@@ -7,4 +7,4 @@ target/
 *.log
 login*.db
 login*.db-shm
-login*.db-wal
+login*.db-walnode_modules/
