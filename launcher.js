@@ -259,14 +259,31 @@ async function startBackend() {
 // Maven
 // ------------------------------------------------------------------
 
+/*
+ * Prefer the Maven Wrapper committed to the repository, which downloads
+ * the right Maven version on first use. Falls back to a system Maven if
+ * the wrapper is not present.
+ */
+function mavenCommand() {
+    const wrapper = path.join(PROJECT_DIR, IS_WIN ? 'mvnw.cmd' : 'mvnw');
+
+    if (!fs.existsSync(wrapper)) return 'mvn';
+
+    if (!IS_WIN) {
+        // A zipped project can lose the executable bit.
+        try { fs.chmodSync(wrapper, 0o755); } catch { /* ignore */ }
+    }
+
+    return wrapper;
+}
+
 function runMaven(args) {
     const env = { ...process.env };
     if (javaHome) env.JAVA_HOME = javaHome;
 
-    return spawnSync('mvn', args, {
+    return spawnSync(mavenCommand(), args, {
         cwd: PROJECT_DIR,
         stdio: 'inherit',
-        shell: IS_WIN, // lets Windows resolve mvn.cmd
         env,
     });
 }
