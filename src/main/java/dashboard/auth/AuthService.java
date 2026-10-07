@@ -1,5 +1,10 @@
 package dashboard.auth;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -15,9 +20,8 @@ import java.time.format.DateTimeFormatter;
  *
  * Database file: login_database.sql
  * Default credentials created at first run:
- *   admin   / Admin@123
- *   manager / Manager@123
- *   viewer  / Viewer@123
+ *   Manager / Manager123
+ *   Staff  / Staff123
  */
 public class AuthService {
 
