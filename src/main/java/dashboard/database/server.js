@@ -889,6 +889,23 @@ function safeRoute(
 }
 
 
+function percentChange(current, previous) {
+  if (
+    previous === null ||
+    previous === undefined ||
+    previous === 0
+  ) {
+    return null;
+  }
+
+  return Number(
+    (
+      ((current - previous) / Math.abs(previous)) * 100
+    ).toFixed(2)
+  );
+}
+
+
 // ============================================================
 // OVERVIEW
 // ============================================================
@@ -1286,18 +1303,101 @@ app.get(
             .value;
 
 
-        const costPerConversion =
-          conversions === 0
-            ? 0
-            : marketingCostRow.cost
-              / conversions;
+        
+const costPerConversion =
+conversions === 0
+  ? 0
+  : marketingCostRow.cost / conversions;
 
 
-        res.json({
+const prevProfitParams = [previous.start, previous.end];
+const prevProfitRegion = regionClause('s', region, prevProfitParams);
 
-          success: true,
+const prevProfitRow = db.prepare(`
+  SELECT
+    COALESCE(SUM(s.revenue - s.quantity * p.cost), 0) AS profit,
+    COALESCE(SUM(s.revenue), 0) AS revenue
+  FROM sales s
+  JOIN products p ON p.product_id = s.product_id
+  WHERE s.order_date BETWEEN ? AND ?
+  ${prevProfitRegion}
+`).get(...prevProfitParams);
 
-          data: {
+const prevMarketing = db.prepare(`
+  SELECT
+    COALESCE(SUM(cost), 0) AS cost,
+    COALESCE(SUM(conversions), 0) AS conversions
+  FROM marketing
+  WHERE campaign_date BETWEEN ? AND ?
+`).get(previous.start, previous.end);
+
+const prevNetProfit = isWholeBusiness
+  ? prevProfitRow.profit - prevMarketing.cost
+  : prevProfitRow.profit;
+
+const prevMargin = prevProfitRow.revenue === 0
+  ? 0
+  : (prevProfitRow.profit * 100) / prevProfitRow.revenue;
+
+const prevCogs = db.prepare(`
+  SELECT COALESCE(SUM(s.quantity * p.cost), 0) AS value
+  FROM sales s
+  JOIN products p ON p.product_id = s.product_id
+  WHERE s.order_date BETWEEN ? AND ?
+`).get(previous.start, previous.end).value;
+
+const prevInventoryValue = db.prepare(`
+  SELECT COALESCE(SUM(avg_stock * cost), 0) AS value
+  FROM (
+    SELECT i.product_id, AVG(i.stock_level) AS avg_stock, p.cost
+    FROM inventory i
+    JOIN products p ON p.product_id = i.product_id
+    WHERE i.snapshot_date BETWEEN ? AND ?
+    GROUP BY i.product_id, p.cost
+  )
+`).get(previous.start, previous.end).value;
+
+const prevTurnover = prevInventoryValue === 0
+  ? 0
+  : prevCogs / prevInventoryValue;
+
+const prevExistingBase = db.prepare(`
+  SELECT COUNT(*) AS value
+  FROM customers
+  WHERE signup_date < ?
+`).get(previous.start).value;
+
+const prevRetained = db.prepare(`
+  SELECT COUNT(DISTINCT s.customer_id) AS value
+  FROM sales s
+  JOIN customers c ON c.customer_id = s.customer_id
+  WHERE c.signup_date < ?
+    AND s.order_date BETWEEN ? AND ?
+`).get(previous.start, previous.start, previous.end).value;
+
+const prevRetention = prevExistingBase === 0
+  ? 0
+  : (prevRetained * 100) / prevExistingBase;
+
+const prevCostPerConversion = prevMarketing.conversions === 0
+  ? 0
+  : prevMarketing.cost / prevMarketing.conversions;
+
+
+// Percentage change for KPI arrows
+const percentChange = (current, previous) => {
+if (previous === 0 || previous == null) {
+  return null;
+}
+
+return Number(
+  (((current - previous) / Math.abs(previous)) * 100).toFixed(2)
+);
+};
+
+res.json({
+success: true,
+data: {
 
             total_revenue:
               Number(
@@ -1349,17 +1449,32 @@ app.get(
                 )
               ),
 
-            cost_per_conversion:
-              Number(
-                costPerConversion.toFixed(
-                  2
-                )
-              )
-          }
-        });
+            
+          cost_per_conversion:
+          Number(
+            costPerConversion.toFixed(2)
+          ),
+
+        profit_change_pct:
+          percentChange(netProfit, prevNetProfit),
+
+        margin_change_pp:
+          Number((profitRow.margin - prevMargin).toFixed(2)),
+
+        turnover_change_pct:
+          percentChange(turnover, prevTurnover),
+
+        retention_change_pp:
+          Number((retention - prevRetention).toFixed(2)),
+
+        cost_conversion_change_pct:
+          percentChange(costPerConversion, prevCostPerConversion)
       }
-    )
+    });
+  }
+)
 );
+
 // ============================================================
 // SALES
 // ============================================================
@@ -3584,6 +3699,118 @@ app.get(
           ).all(
             ...params
           );
+
+
+
+
+        // Previous-period KPI comparisons
+        // Uses the existing previousRange() function.
+
+        const prevProfitParams = [
+          previous.start,
+          previous.end
+        ];
+
+        const prevProfitRegion = regionClause(
+          's', region, prevProfitParams
+        );
+
+        const prevProfitRow = db.prepare(`
+          SELECT
+            COALESCE(SUM(
+              s.revenue - s.quantity * p.cost
+            ), 0) AS profit,
+            COALESCE(SUM(s.revenue), 0) AS revenue
+          FROM sales s
+          JOIN products p
+            ON p.product_id = s.product_id
+          WHERE s.order_date BETWEEN ? AND ?
+          ${prevProfitRegion}
+        `).get(...prevProfitParams);
+
+        const prevMarketing = db.prepare(`
+          SELECT
+            COALESCE(SUM(cost), 0) AS cost,
+            COALESCE(SUM(conversions), 0) AS conversions
+          FROM marketing
+          WHERE campaign_date BETWEEN ? AND ?
+        `).get(previous.start, previous.end);
+
+        const prevNetProfit = isWholeBusiness
+          ? prevProfitRow.profit - prevMarketing.cost
+          : prevProfitRow.profit;
+
+        const prevMargin = prevProfitRow.revenue === 0
+          ? 0
+          : prevProfitRow.profit * 100 /
+            prevProfitRow.revenue;
+
+        const prevCogs = db.prepare(`
+          SELECT COALESCE(
+            SUM(s.quantity * p.cost), 0
+          ) AS value
+          FROM sales s
+          JOIN products p
+            ON p.product_id = s.product_id
+          WHERE s.order_date BETWEEN ? AND ?
+        `).get(previous.start, previous.end).value;
+
+        const prevInventoryValue = db.prepare(`
+          SELECT COALESCE(
+            SUM(avg_stock * cost), 0
+          ) AS value
+          FROM (
+            SELECT
+              i.product_id,
+              AVG(i.stock_level) AS avg_stock,
+              p.cost
+            FROM inventory i
+            JOIN products p
+              ON p.product_id = i.product_id
+            WHERE i.snapshot_date BETWEEN ? AND ?
+            GROUP BY i.product_id, p.cost
+          )
+        `).get(previous.start, previous.end).value;
+
+        const prevTurnover = prevInventoryValue === 0
+          ? 0
+          : prevCogs / prevInventoryValue;
+
+        const prevExistingBase = db.prepare(`
+          SELECT COUNT(*) AS value
+          FROM customers
+          WHERE signup_date < ?
+        `).get(previous.start).value;
+
+        const prevRetained = db.prepare(`
+          SELECT COUNT(DISTINCT s.customer_id) AS value
+          FROM sales s
+          JOIN customers c
+            ON c.customer_id = s.customer_id
+          WHERE c.signup_date < ?
+            AND s.order_date BETWEEN ? AND ?
+        `).get(
+          previous.start,
+          previous.start,
+          previous.end
+        ).value;
+
+        const prevRetention = prevExistingBase === 0
+          ? 0
+          : prevRetained * 100 / prevExistingBase;
+
+        const prevCostPerConversion =
+          prevMarketing.conversions === 0
+            ? 0
+            : prevMarketing.cost / prevMarketing.conversions;
+
+        const percentChange = (current, old) =>
+          old === 0
+            ? null
+            : Number(
+                (((current - old) / Math.abs(old)) * 100)
+                  .toFixed(2)
+              );
 
 
         // Keep the original response structure because

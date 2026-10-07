@@ -1,3 +1,4 @@
+
 package dashboard.gui;
 
 import dashboard.database.AnalyticsApi.Kpis;
@@ -6,102 +7,102 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
-/**
- * The seven headline indicators, in one row.
- *
- * Each card shows a short title and a compact value ($1.23M). The full
- * name, a plain-English definition, the exact figure and the tables it is
- * calculated from are in the card's tooltip, which keeps the row to a
- * single line of the screen.
- */
 public class KpiPanel extends JPanel {
 
-    private static final Color PRIMARY_TEXT   = Theme.TEXT;
+    private static final Color PRIMARY_TEXT = Theme.TEXT;
     private static final Color SECONDARY_TEXT = Theme.TEXT_MUTED;
-    private static final Color BORDER_COLOR   = Theme.BORDER;
+    private static final Color BORDER_COLOR = Theme.BORDER;
 
-    // Plain-English explanation of each indicator, shown in the tooltip.
-    private static final String REVENUE_DESC =
-            "The total sales income (money earned) for the selected period, before costs are deducted.";
+    private static final Color GREEN = new Color(22, 163, 74);
+    private static final Color RED = new Color(220, 38, 38);
 
-    private static final String GROWTH_DESC =
-            "The percentage change in revenue against the preceding period of equal length.";
+    private static final String[] TITLES = {
+        "Revenue", "Growth", "Net Profit",
+        "Gross Margin", "Turnover",
+        "Retention", "Cost / Conv."
+    };
 
-    private static final String PROFIT_DESC =
-            "The revenue remaining after cost of goods sold and marketing spend.";
+    private static final String[] NAMES = {
+        "Total Revenue",
+        "Revenue Growth Rate",
+        "Profit (Net)",
+        "Gross Profit Margin",
+        "Inventory Turnover",
+        "Customer Retention",
+        "Cost per Conversion"
+    };
 
-    private static final String MARGIN_DESC =
-            "The gross profit expressed as a percentage of revenue, before marketing.";
+    private static final String[] DESCRIPTIONS = {
+        "The total sales income before costs are deducted.",
+        "The percentage change in revenue against the preceding period of equal length.",
+        "Revenue remaining after cost of goods sold and marketing spend.",
+        "Gross profit as a percentage of revenue, before marketing.",
+        "The number of times average inventory was sold through.",
+        "The proportion of pre-existing customers who purchased again.",
+        "Average marketing spend required to secure one conversion."
+    };
 
-    private static final String TURNOVER_DESC =
-            "The number of times average inventory was sold through during the period.";
+    private static final String[] SOURCES = {
+        "sales",
+        "sales",
+        "sales + products + marketing",
+        "sales + products",
+        "inventory + products + sales",
+        "customers + sales",
+        "marketing"
+    };
 
-    private static final String RETENTION_DESC =
-            "The proportion of pre-existing customers who purchased again in the period.";
-
-    private static final String COST_PER_CONVERSION_DESC =
-            "The average marketing spend required to secure one conversion (usually an interaction).";
-
-    private final JLabel revenueValue = new JLabel("...");
-    private final JLabel growthValue = new JLabel("...");
-    private final JLabel profitValue = new JLabel("...");
-    private final JLabel marginValue = new JLabel("...");
-    private final JLabel turnoverValue = new JLabel("...");
-    private final JLabel retentionValue = new JLabel("...");
-    private final JLabel costPerConversionValue = new JLabel("...");
-
-    private final JPanel revenueCard;
-    private final JPanel growthCard;
-    private final JPanel profitCard;
-    private final JPanel marginCard;
-    private final JPanel turnoverCard;
-    private final JPanel retentionCard;
-    private final JPanel costPerConversionCard;
+    private final JLabel[] values = new JLabel[7];
+    private final JLabel[] changes = new JLabel[7];
+    private final JPanel[] cards = new JPanel[7];
 
     public KpiPanel() {
 
         setLayout(new GridLayout(1, 7, 8, 0));
         setBackground(Theme.PAGE_BG);
 
-        revenueCard = createCard("Revenue", revenueValue);
-        growthCard = createCard("Growth", growthValue);
-        profitCard = createCard("Net Profit", profitValue);
-        marginCard = createCard("Gross Margin", marginValue);
-        turnoverCard = createCard("Turnover", turnoverValue);
-        retentionCard = createCard("Retention", retentionValue);
-        costPerConversionCard = createCard("Cost / Conv.", costPerConversionValue);
+        for (int i = 0; i < 7; i++) {
 
-        add(revenueCard);
-        add(growthCard);
-        add(profitCard);
-        add(marginCard);
-        add(turnoverCard);
-        add(retentionCard);
-        add(costPerConversionCard);
+            values[i] = new JLabel("...");
+            changes[i] = new JLabel(" ");
 
-        // Until the first load completes, the tooltips still explain each card.
-        tooltip(revenueCard, "Total Revenue", REVENUE_DESC, null, "sales");
-        tooltip(growthCard, "Revenue Growth Rate", GROWTH_DESC, null, "sales");
-        tooltip(profitCard, "Profit (Net)", PROFIT_DESC, null, "sales + products + marketing");
-        tooltip(marginCard, "Gross Profit Margin", MARGIN_DESC, null, "sales + products");
-        tooltip(turnoverCard, "Inventory Turnover", TURNOVER_DESC, null,
-                "inventory + products + sales");
-        tooltip(retentionCard, "Customer Retention", RETENTION_DESC, null,
-                "customers + sales");
-        tooltip(costPerConversionCard, "Cost per Conversion", COST_PER_CONVERSION_DESC,
-                null, "marketing");
+            cards[i] = createCard(
+                TITLES[i],
+                values[i],
+                changes[i],
+                i != 1
+            );
+
+            add(cards[i]);
+
+            tooltip(i, null, SOURCES[i]);
+        }
     }
 
-    private JPanel createCard(String title, JLabel valueLabel) {
+    private JPanel createCard(
+            String title,
+            JLabel valueLabel,
+            JLabel changeLabel,
+            boolean showChange
+    ) {
 
         JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+
+        card.setLayout(
+            new BoxLayout(card, BoxLayout.Y_AXIS)
+        );
+
         card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
+
+        card.setBorder(
+            BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR),
-                new EmptyBorder(7, 10, 7, 10)));
+                new EmptyBorder(7, 10, 7, 10)
+            )
+        );
 
         JLabel titleLabel = new JLabel(title);
+
         titleLabel.setFont(Theme.KPI_TITLE);
         titleLabel.setForeground(SECONDARY_TEXT);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -114,83 +115,192 @@ public class KpiPanel extends JPanel {
         card.add(Box.createVerticalStrut(2));
         card.add(valueLabel);
 
+        if (showChange) {
+
+            changeLabel.setFont(
+                new Font("SansSerif", Font.BOLD, 11)
+            );
+
+            changeLabel.setForeground(SECONDARY_TEXT);
+            changeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            card.add(Box.createVerticalStrut(4));
+            card.add(changeLabel);
+        }
+
         return card;
     }
 
-    /**
-     * Updates all seven cards from the analytics backend.
-     *
-     * Large money figures are shortened ($1.23M) so seven cards fit on one
-     * row; the exact figure is in each tooltip.
-     */
-    public void update(Kpis kpis) {
+    private void setChange(
+            int index,
+            Double change,
+            boolean lowerIsBetter,
+            boolean percentagePoints
+    ) {
 
-        revenueValue.setText(AxisScale.money(kpis.revenue()));
-        growthValue.setText(kpis.growth() == null
-                ? "N/A"
-                : String.format("%.1f%%", kpis.growth()));
-        profitValue.setText(AxisScale.money(kpis.profit()));
-        marginValue.setText(String.format("%.1f%%", kpis.margin()));
-        turnoverValue.setText(String.format("%.2f", kpis.turnover()));
-        retentionValue.setText(String.format("%.1f%%", kpis.retention()));
-        costPerConversionValue.setText(String.format("$%,.2f", kpis.costPerConversion()));
+        JLabel label = changes[index];
 
-        tooltip(revenueCard, "Total Revenue", REVENUE_DESC,
-                String.format("$%,.2f", kpis.revenue()), "sales");
+        if (change == null || !Double.isFinite(change)) {
+            label.setText("N/A");
+            label.setForeground(SECONDARY_TEXT);
+            return;
+        }
 
-        tooltip(growthCard, "Revenue Growth Rate", GROWTH_DESC,
-                kpis.growth() == null ? "Not available for this period"
-                        : String.format("%.2f%%", kpis.growth()),
-                "sales");
+        String unit = percentagePoints ? " pp" : "%";
 
-        tooltip(profitCard, "Profit (Net)", PROFIT_DESC,
-                String.format("$%,.2f", kpis.profit()),
-                "sales + products"
-                        + (kpis.profitIncludesMarketing()
-                                ? " \u2212 marketing"
-                                : " (gross \u2014 marketing has no region)"));
+        if (change > 0) {
 
-        tooltip(marginCard, "Gross Profit Margin", MARGIN_DESC,
-                String.format("%.2f%%", kpis.margin()), "sales + products");
+            label.setText(
+                String.format("↑ %.1f%s", change, unit)
+            );
 
-        tooltip(turnoverCard, "Inventory Turnover", TURNOVER_DESC,
-                String.format("%.3f", kpis.turnover()),
-                "inventory + products + sales"
-                        + (kpis.turnoverRegionIgnored()
-                                ? " (national \u2014 inventory has no region)"
-                                : ""));
+            label.setForeground(
+                lowerIsBetter ? RED : GREEN
+            );
 
-        tooltip(retentionCard, "Customer Retention", RETENTION_DESC,
-                String.format("%.2f%%", kpis.retention()), "customers + sales");
+        } else if (change < 0) {
 
-        tooltip(costPerConversionCard, "Cost per Conversion", COST_PER_CONVERSION_DESC,
-                String.format("$%,.2f", kpis.costPerConversion()), "marketing");
+            label.setText(
+                String.format(
+                    "↓ %.1f%s",
+                    Math.abs(change),
+                    unit
+                )
+            );
+
+            label.setForeground(
+                lowerIsBetter ? GREEN : RED
+            );
+
+        } else {
+
+            label.setText("— 0.0" + unit);
+            label.setForeground(SECONDARY_TEXT);
+        }
     }
 
-    /**
-     * Tooltip: full name, definition, the exact figure, then the tables the
-     * figure is calculated from.
-     */
-    private void tooltip(JPanel card, String name, String description,
-                         String exact, String calculation) {
+    public void update(Kpis kpis) {
 
-        if (card == null) return;
+        values[0].setText(AxisScale.money(kpis.revenue()));
 
-        card.setToolTipText(
-                "<html><div style='width:260px'><b>" + name + "</b><br>"
-                + description
-                + (exact == null ? "" : "<br><br>Exact value: <b>" + exact + "</b>")
-                + "<br><br><i>Calculation: " + calculation + "</i></div></html>");
+        values[1].setText(
+            kpis.growth() == null
+                ? "N/A"
+                : String.format("%.1f%%", kpis.growth())
+        );
+
+        values[2].setText(AxisScale.money(kpis.profit()));
+
+        values[3].setText(
+            String.format("%.1f%%", kpis.margin())
+        );
+
+        values[4].setText(
+            String.format("%.2f", kpis.turnover())
+        );
+
+        values[5].setText(
+            String.format("%.1f%%", kpis.retention())
+        );
+
+        values[6].setText(
+            String.format("$%,.2f", kpis.costPerConversion())
+        );
+
+        // Green/red change indicators
+        setChange(0, kpis.growth(), false, false);
+        setChange(2, kpis.profitChange(), false, false);
+        setChange(3, kpis.marginChange(), false, true);
+        setChange(4, kpis.turnoverChange(), false, false);
+        setChange(5, kpis.retentionChange(), false, true);
+        setChange(6, kpis.costConversionChange(), true, false);
+
+        tooltip(
+            0,
+            String.format("$%,.2f", kpis.revenue()),
+            SOURCES[0]
+        );
+
+        tooltip(
+            1,
+            kpis.growth() == null
+                ? "Not available for this period"
+                : String.format("%.2f%%", kpis.growth()),
+            SOURCES[1]
+        );
+
+        tooltip(
+            2,
+            String.format("$%,.2f", kpis.profit()),
+            "sales + products" +
+                (kpis.profitIncludesMarketing()
+                    ? " − marketing"
+                    : " (gross — marketing has no region)")
+        );
+
+        tooltip(
+            3,
+            String.format("%.2f%%", kpis.margin()),
+            SOURCES[3]
+        );
+
+        tooltip(
+            4,
+            String.format("%.3f", kpis.turnover()),
+            SOURCES[4] +
+                (kpis.turnoverRegionIgnored()
+                    ? " (national — inventory has no region)"
+                    : "")
+        );
+
+        tooltip(
+            5,
+            String.format("%.2f%%", kpis.retention()),
+            SOURCES[5]
+        );
+
+        tooltip(
+            6,
+            String.format("$%,.2f", kpis.costPerConversion()),
+            SOURCES[6]
+        );
+
+        revalidate();
+        repaint();
+    }
+
+    private void tooltip(
+            int index,
+            String exact,
+            String calculation
+    ) {
+
+        String content =
+            "<html><div style='width:260px'><b>"
+            + NAMES[index]
+            + "</b><br>"
+            + DESCRIPTIONS[index]
+            + (exact == null
+                ? ""
+                : "<br><br>Exact value: <b>"
+                    + exact + "</b>")
+            + "<br><br><i>Calculation: "
+            + calculation
+            + "</i></div></html>";
+
+        cards[index].setToolTipText(content);
+
+        // Tooltips also work when hovering over labels
+        values[index].setToolTipText(content);
+        changes[index].setToolTipText(content);
     }
 
     public void showError() {
 
-        revenueValue.setText("N/A");
-        growthValue.setText("N/A");
-        profitValue.setText("N/A");
-        marginValue.setText("N/A");
-        turnoverValue.setText("N/A");
-        retentionValue.setText("N/A");
-        costPerConversionValue.setText("N/A");
+        for (int i = 0; i < 7; i++) {
+            values[i].setText("N/A");
+            changes[i].setText("N/A");
+            changes[i].setForeground(SECONDARY_TEXT);
+        }
     }
 }

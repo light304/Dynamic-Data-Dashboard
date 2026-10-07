@@ -13,6 +13,11 @@ import java.util.Map;
  */
 public final class AnalyticsApi {
 
+        private static Double nullableNumber(Object value) {
+                return value == null ? null : number(value);
+            }
+
+            
     private AnalyticsApi() {}
 
     // =========================================================
@@ -64,17 +69,24 @@ public final class AnalyticsApi {
             String createdAt
     ) {}
 
+
     public record Kpis(
-            double revenue,
-            Double growth,
-            double profit,
-            double margin,
-            double turnover,
-            double retention,
-            double costPerConversion,
-            boolean profitIncludesMarketing,
-            boolean turnoverRegionIgnored
-    ) {}
+        double revenue,
+        Double growth,
+        double profit,
+        double margin,
+        double turnover,
+        double retention,
+        double costPerConversion,
+        boolean profitIncludesMarketing,
+        boolean turnoverRegionIgnored,
+        Double profitChange,
+        Double marginChange,
+        Double turnoverChange,
+        Double retentionChange,
+        Double costConversionChange
+) {}
+
 
     public record TableData(
             String[] columns,
@@ -101,68 +113,28 @@ public final class AnalyticsApi {
                         root.get("data")
                 );
 
-        return new Kpis(
+        
+return new Kpis(
+        number(data.get("total_revenue")),
+        nullableNumber(data.get("revenue_growth_pct")),
+        number(data.get("profit")),
+        number(data.get("profit_margin_pct")),
+        number(data.get("inventory_turnover")),
+        number(data.get("customer_retention_pct")),
+        number(data.get("cost_per_conversion")),
+        bool(data.get("profit_includes_marketing")),
+        bool(data.get("inventory_turnover_region_ignored")),
+        nullableNumber(data.get("profit_change_pct")),
+        nullableNumber(data.get("margin_change_pp")),
+        nullableNumber(data.get("turnover_change_pct")),
+        nullableNumber(data.get("retention_change_pp")),
+        nullableNumber(data.get("cost_conversion_change_pct"))
+        
+        
+    );
+}
 
-                number(
-                        data.get(
-                                "total_revenue"
-                        )
-                ),
-
-                data.get(
-                        "revenue_growth_pct"
-                ) == null
-                        ? null
-                        : number(
-                                data.get(
-                                        "revenue_growth_pct"
-                                )
-                        ),
-
-                number(
-                        data.get(
-                                "profit"
-                        )
-                ),
-
-                number(
-                        data.get(
-                                "profit_margin_pct"
-                        )
-                ),
-
-                number(
-                        data.get(
-                                "inventory_turnover"
-                        )
-                ),
-
-                number(
-                        data.get(
-                                "customer_retention_pct"
-                        )
-                ),
-
-                number(
-                        data.get(
-                                "cost_per_conversion"
-                        )
-                ),
-
-                bool(
-                        data.get(
-                                "profit_includes_marketing"
-                        )
-                ),
-
-                bool(
-                        data.get(
-                                "inventory_turnover_region_ignored"
-                        )
-                )
-        );
-    }
-
+    
 
     // =========================================================
     // GENERIC POINT DATA
